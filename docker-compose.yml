@@ -1,0 +1,19 @@
+services:
+  compliance-auto-filter:
+    build: .
+    container_name: compliance-auto-filter
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persists compliance_data.db (SQLite) on the HOST machine, outside
+      # the container, in a "data" folder next to this file. This is what
+      # makes your permanent Daily Summary archive survive `docker compose
+      # down`, image rebuilds, and Docker/Windows updates. SQLite's WAL mode
+      # also creates compliance_data.db-wal / -shm alongside it — normal,
+      # leave them be, they merge into the main file automatically.
+      - ./data:/data
+    restart: unless-stopped
+    # unless-stopped = starts automatically when Docker Desktop starts (and
+    # Docker Desktop itself can be set to launch at Windows login — see
+    # README), and restarts itself if it ever crashes. It only stays down
+    # if YOU explicitly run `docker compose stop`.

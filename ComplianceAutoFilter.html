@@ -1,0 +1,2317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Compliance Auto-Filter — IWSP IT</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+:root{
+  --bg:#0a0e14;--surface:#111720;--surface2:#181f2a;--surface3:#202836;
+  --accent:#00e676;--accent2:#29b6f6;--accent3:#ff6d00;--warn:#ffd740;--danger:#ff3d57;--purple:#ce93d8;
+  --text:#e2eaf4;--text2:#8899aa;--text3:#3d4f63;--border:#1e2d3d;
+  --radius:10px;--radius-lg:14px;--mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif;
+  --shadow:0 12px 40px rgba(0,0,0,.55);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--text);}
+body{overflow-x:hidden;}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:4px;}
+@keyframes up{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
+@keyframes fd{from{opacity:0;}to{opacity:1;}}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* ---- BUTTONS ---- */
+.btn{padding:9px 16px;border:none;border-radius:var(--radius);font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;transition:.18s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
+.btn-p{background:var(--accent);color:#000;}.btn-p:hover:not(:disabled){background:#33ffaa;box-shadow:0 0 18px rgba(0,230,118,.35);}
+.btn-s{background:var(--surface2);color:var(--text);border:1px solid var(--border);}.btn-s:hover{background:var(--surface3);}
+.btn-d{background:var(--danger);color:#fff;}.btn-d:hover{background:#ff5570;}
+.btn-i{background:var(--accent2);color:#000;}.btn-i:hover{background:#55ccff;}
+.btn-sm{padding:6px 12px;font-size:12px;}
+
+/* ---- SHELL ---- */
+#app{min-height:100vh;}
+.shell{display:flex;min-height:100vh;}
+.sb{width:230px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.sb-brand{padding:18px 16px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.sb-icon{width:36px;height:36px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;box-shadow:0 0 14px rgba(0,230,118,.35);}
+.sb-btext{font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--text);}
+.sb-btext span{color:var(--accent);}
+.sb-nav{flex:1;padding:10px 8px;}
+.nav-sec{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;padding:10px 8px 3px;}
+.ni{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:.14s;margin-bottom:1px;}
+.ni:hover{background:var(--surface2);color:var(--text);}
+.ni.act{background:rgba(0,230,118,.1);color:var(--accent);border:1px solid rgba(0,230,118,.18);}
+.ni .ic{width:18px;text-align:center;flex-shrink:0;font-style:normal;}
+.ni .nb{margin-left:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;}
+.sb-foot{padding:12px 14px;border-top:1px solid var(--border);}
+.sb-foot .syncrow{font-size:11px;color:var(--text3);margin-bottom:2px;display:flex;align-items:center;gap:6px;}
+.pd{width:9px;height:9px;border-radius:50%;display:inline-block;vertical-align:middle;flex-shrink:0;}
+.po{background:var(--accent);box-shadow:0 0 8px rgba(0,230,118,.7);animation:pulse 2s infinite;}
+.pf{background:var(--danger);}
+.build{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:6px;}
+
+/* ---- MAIN ---- */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;}
+.topbar{flex-shrink:0;background:rgba(10,14,20,.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:12px 26px;display:flex;align-items:center;justify-content:space-between;z-index:50;position:sticky;top:0;}
+.pt{font-family:var(--mono);font-size:13px;color:var(--accent);}
+.tb-r{display:flex;align-items:center;gap:14px;font-size:12px;color:var(--text2);}
+.clock{font-family:var(--mono);font-size:12px;color:var(--text2);min-width:150px;text-align:right;}
+.sync-pill{display:inline-flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;font-family:var(--sans);cursor:pointer;transition:.15s;}
+.sync-pill:hover{background:var(--surface3);border-color:var(--accent);}
+.sync-pill.syncing{opacity:.7;cursor:wait;}
+.content{flex:1;padding:24px 26px 60px;max-width:1180px;}
+.pg{display:none;animation:fd .2s ease;}
+.pg.act{display:block;}
+
+/* ---- FILE WARNING BANNER ---- */
+#fileWarningBanner{display:none;align-items:center;gap:10px;background:rgba(255,215,64,.08);border:1px solid rgba(255,215,64,.3);color:var(--warn);border-radius:var(--radius);padding:12px 16px;font-size:12.5px;margin-bottom:20px;}
+#fileWarningBanner b{color:var(--warn);}
+
+/* ---- CARDS / SECTIONS ---- */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:18px;box-shadow:var(--shadow);}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.ct{font-family:var(--mono);font-size:13px;color:var(--text);font-weight:700;}
+.ca{display:flex;gap:8px;flex-wrap:wrap;}
+.section-desc{font-size:12.5px;color:var(--text2);margin-bottom:14px;}
+
+/* ---- FORM FIELDS ---- */
+.fg{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end;}
+.ff{display:flex;flex-direction:column;gap:6px;}
+.ff label{font-size:10.5px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;font-family:var(--mono);}
+.ff input[type=file]{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;color:var(--text2);font-family:var(--sans);font-size:12.5px;min-width:220px;}
+.ff input[type=date],.ff input[type=text]{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;color:var(--text);font-family:var(--mono);font-size:13px;min-width:160px;}
+.ff input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,230,118,.1);}
+input::-webkit-calendar-picker-indicator{filter:invert(.8);}
+
+/* ---- BADGES / STATUS ---- */
+.bg{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;font-family:var(--mono);letter-spacing:.3px;}
+.bg::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
+.bg-g{background:rgba(0,230,118,.1);color:var(--accent);border:1px solid rgba(0,230,118,.2);}
+.bg-r{background:rgba(255,61,87,.1);color:var(--danger);border:1px solid rgba(255,61,87,.2);}
+.bg-b{background:rgba(41,182,246,.1);color:var(--accent2);border:1px solid rgba(41,182,246,.2);}
+.status-text{color:var(--text2);font-size:12.5px;}
+
+/* ---- SUMMARY STAT GRID ---- */
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;}
+.sc{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;position:relative;overflow:hidden;transition:.18s;border-left:3px solid var(--border);}
+.sc::after{content:'';position:absolute;top:-30px;right:-30px;width:90px;height:90px;border-radius:50%;background:var(--text3);opacity:.08;}
+.sc.g::after{background:var(--accent);}
+.sc.b::after{background:var(--accent2);}
+.sc.o::after{background:var(--accent3);}
+.sc.p::after{background:var(--purple);}
+.sc-lbl,.sc-val,.bg{position:relative;z-index:1;}
+.sc:hover{transform:translateY(-2px);}
+.sc.flagged{border-left-color:var(--danger);}
+.sc.clean{border-left-color:var(--accent);}
+.sc-lbl{font-size:10.5px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-family:var(--mono);}
+.sc-val{font-family:var(--mono);font-size:30px;font-weight:700;color:var(--text);margin:8px 0;}
+
+/* ---- TABS ---- */
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--surface2);padding:4px;border-radius:var(--radius);width:fit-content;flex-wrap:wrap;}
+.tab{padding:8px 16px;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--text2);transition:.15s;font-family:var(--mono);}
+.tab.active{background:var(--surface);color:var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.3);}
+.panel{display:none;max-height:480px;overflow:auto;}
+.panel.active{display:block;}
+
+/* ---- TABLES ---- */
+.tw{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+thead tr{background:var(--surface2);}
+th{padding:10px 13px;text-align:left;font-size:10.5px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;position:sticky;top:0;background:var(--surface2);font-family:var(--mono);}
+td{padding:9px 13px;border-bottom:1px solid var(--border);color:var(--text2);font-family:var(--mono);}
+tr:last-child td{border-bottom:none;}
+tbody tr{transition:.13s;}
+tbody tr:hover{background:var(--surface2);}
+tbody tr:hover td{color:var(--text);}
+.table-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.table-toolbar .tcount{font-size:13px;font-weight:700;color:var(--text);font-family:var(--mono);}
+.complied-cb{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;}
+.ping-status{font-family:var(--mono);font-size:11px;margin-left:8px;font-weight:700;}
+tr.complied-row td{opacity:.5;}
+tr.complied-row td:not(:last-child){text-decoration:line-through;text-decoration-color:var(--accent);}
+.week-row td{background:rgba(0,230,118,.08);color:var(--accent);font-weight:800;font-family:var(--mono);text-transform:uppercase;letter-spacing:.6px;font-size:10.5px;padding:8px 13px;border-bottom:1px solid rgba(0,230,118,.2);border-top:1px solid rgba(0,230,118,.2);}
+.week-row:first-child td{border-top:none;}
+#summaryHistoryTable td.gap{color:var(--text3);}
+
+.empty{color:var(--text2);font-size:13px;padding:36px 24px;text-align:center;background:var(--surface2);border:1px dashed var(--border);border-radius:var(--radius);}
+
+details{margin-top:8px;}
+summary{cursor:pointer;color:var(--accent2);font-size:12.5px;font-weight:600;list-style:none;}
+summary::-webkit-details-marker{display:none;}
+summary:before{content:"▸ ";}
+details[open] summary:before{content:"▾ ";}
+.ruleview{font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:10px;line-height:1.85;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;}
+.ruleview b{color:var(--accent);}
+pre.rawview{background:#080a0e;border:1px solid var(--border);border-radius:var(--radius);padding:14px;font-size:11.5px;max-height:300px;overflow:auto;margin-top:10px;color:var(--accent2);font-family:var(--mono);}
+
+.footer-actions{margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+
+@media(max-width:960px){.sg{grid-template-columns:1fr 1fr;}.sb{display:none;}}
+</style>
+</head>
+<body>
+
+<div id="app">
+ <div class="shell">
+  <div class="sb">
+   <div class="sb-brand">
+    <div class="sb-icon">⚙️</div>
+    <div class="sb-btext">IWSP CORP<br><span>Compliance Auto-Filter</span></div>
+   </div>
+   <nav class="sb-nav">
+    <div class="nav-sec">Main</div>
+    <button class="ni act" onclick="nav('upload')" id="nav-upload"><i class="ic">📤</i> Upload &amp; Run</button>
+    <button class="ni" onclick="nav('results')" id="nav-results"><i class="ic">📋</i> Results</button>
+    <button class="ni" onclick="nav('summary')" id="nav-summary"><i class="ic">📊</i> Daily Summary</button>
+    <button class="ni" onclick="nav('archive')" id="nav-archive"><i class="ic">🗓️</i> Monthly Archive</button>
+    <button class="ni" onclick="nav('report')" id="nav-report"><i class="ic">📈</i> Monthly Report</button>
+    <div class="nav-sec">Tools</div>
+    <button class="ni" onclick="nav('assets')" id="nav-assets"><i class="ic">🗂️</i> Asset Organizer</button>
+   </nav>
+   <div class="sb-foot">
+    <div class="syncrow"><span class="pd" id="syncDot2">&nbsp;</span><span id="connText">Checking…</span></div>
+    <div class="syncrow" style="margin-bottom:0;"><span id="dbModeBadge2" class="bg bg-b" style="margin-top:2px;">DATABASE</span></div>
+    <div class="build">build 2026-09-08.2</div>
+   </div>
+  </div>
+
+  <div class="main">
+   <div class="topbar">
+    <span class="pt" id="pgTitle">// UPLOAD &amp; RUN</span>
+    <div class="tb-r">
+     <button class="sync-pill" id="syncPill" onclick="syncNow(this)"><span class="pd" id="syncDotTop">&nbsp;</span> Sync</button>
+     <span class="clock" id="clock">—</span>
+    </div>
+   </div>
+
+   <div class="content" id="content">
+
+    <div id="fileWarningBanner">
+     <span>⚠️</span>
+     <div><b>You're viewing this as a local file.</b> Saved runs will only exist in this browser. Open this tool from the server address instead — e.g. <code style="font-family:var(--mono);">http://&lt;server-ip&gt;:8000</code> — printed in the server console, so everyone on the network shares the same database.</div>
+    </div>
+
+    <!-- UPLOAD & RUN -->
+    <div class="pg act" id="pg-upload">
+     <div class="card">
+      <div class="ch"><span class="ct">// UPLOAD DAILY EXPORT</span></div>
+      <div class="fg">
+       <div class="ff"><label>CSV file</label><input type="file" id="csvFile" accept=".csv"></div>
+       <div class="ff"><label>Report date</label><input type="date" id="reportDate"></div>
+       <div class="ff" style="flex-direction:row;gap:8px;">
+        <button class="btn btn-s btn-sm" onclick="resetAll()">Reset</button>
+        <button class="btn btn-p btn-sm" onclick="runFilters()">▶ Run Filters</button>
+       </div>
+      </div>
+      <div id="fileStatus" class="status-text" style="margin-top:14px;"></div>
+      <details>
+       <summary>Rule reference (auto-recalculated daily from Report date)</summary>
+       <div class="ruleview" id="ruleRef"></div>
+      </details>
+     </div>
+
+     <div class="card" id="summarySection" style="display:none;">
+      <div class="ch"><span class="ct">// TODAY'S RESULT</span></div>
+      <div class="sg" id="summaryGrid"></div>
+     </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="pg" id="pg-results">
+     <div class="card" id="resultsSection">
+      <div class="ch"><span class="ct">// NON-COMPLIANT DEVICES BY CATEGORY</span></div>
+      <div class="tabs" id="tabs"></div>
+      <div id="panels"></div>
+      <div class="footer-actions">
+       <button class="btn btn-i btn-sm" onclick="copyAllForTeams(this)">📋 Copy All (paste as table in Teams)</button>
+       <button class="btn btn-s btn-sm" onclick="exportCurrent()">⬇ Export current tab (CSV)</button>
+       <button class="btn btn-s btn-sm" onclick="exportAll()">⬇ Export full report (CSV)</button>
+       <button class="btn btn-p btn-sm" onclick="saveToHistory()">💾 Save today's run to database</button>
+      </div>
+     </div>
+     <div class="empty" id="resultsEmpty">Run the filters on the Upload &amp; Run page to see results here.</div>
+    </div>
+
+    <!-- DAILY SUMMARY -->
+    <div class="pg" id="pg-summary">
+     <div class="card">
+      <div class="ch">
+       <span class="ct">// DAILY SUMMARY</span>
+       <span class="bg bg-b" id="dbModeBadge">DATABASE</span>
+      </div>
+      <div class="row" style="justify-content:space-between;margin-bottom:14px;">
+       <span class="status-text" id="dbModeText">Saved runs, recorded centrally for the team.</span>
+       <div class="row">
+        <button class="btn btn-s btn-sm" onclick="copySummaryTable(this)">📋 Copy table</button>
+        <button class="btn btn-s btn-sm" onclick="exportDatabase()">⬇ Export (.json)</button>
+        <input type="file" id="dbImportFile" accept=".json" style="display:none;" onchange="importDatabase(event)">
+        <button class="btn btn-s btn-sm" onclick="document.getElementById('dbImportFile').click()">⬆ Import (.json)</button>
+        <button class="btn btn-d btn-sm" onclick="clearHistory()">Clear database</button>
+       </div>
+      </div>
+      <div class="tw"><div id="historyList"></div></div>
+      <details>
+       <summary>View raw record for a date</summary>
+       <div class="row" style="margin-top:10px;">
+        <input type="date" id="dbViewDate" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;color:var(--text);font-family:var(--mono);font-size:13px;">
+        <button class="btn btn-s btn-sm" onclick="viewDbRecord()">View JSON</button>
+        <button class="btn btn-s btn-sm" onclick="loadDbRecordToTabs()">Load into tabs above</button>
+       </div>
+       <pre class="rawview" id="dbRawView" style="display:none;"></pre>
+      </details>
+     </div>
+    </div>
+
+    <!-- MONTHLY ARCHIVE -->
+    <div class="pg" id="pg-archive">
+     <div class="card">
+      <div class="ch">
+       <span class="ct">// MONTHLY ARCHIVE</span>
+       <span class="bg bg-b">DATABASE</span>
+      </div>
+      <div class="row" style="justify-content:space-between;margin-bottom:14px;">
+       <span class="status-text">Every previous month's saved daily results, same permanent archive as Daily Summary. Covers FY2024 (Apr 2024) through today.</span>
+       <div class="row">
+        <label for="archiveMonthSelect" style="font-family:var(--mono);font-size:12px;color:var(--muted);">Month:</label>
+        <select id="archiveMonthSelect" onchange="renderArchive()" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;color:var(--text);font-family:var(--mono);font-size:13px;"></select>
+       </div>
+      </div>
+      <div class="tw"><div id="archiveList"></div></div>
+
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+       <div style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:8px;">
+        ⇅ IMPORT / EXPORT A DATE RANGE (CSV) <span style="opacity:.65;">— e.g. back up or move just one fiscal year, instead of the whole database. Columns: Date, PF, WU, ME, SF.</span>
+       </div>
+       <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end;">
+        <div><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);">From</label>
+         <input type="date" id="archExportFrom" style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:12px;padding:6px;"></div>
+        <div><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);">To</label>
+         <input type="date" id="archExportTo" style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:12px;padding:6px;"></div>
+        <button class="btn btn-s btn-sm" onclick="exportArchiveRange()">⬇ Export range (.csv)</button>
+        <span style="width:1px;height:26px;background:var(--border);"></span>
+        <input type="file" id="archImportFile" accept=".csv" style="display:none;" onchange="importArchiveRange(event)">
+        <button class="btn btn-s btn-sm" onclick="document.getElementById('archImportFile').click()">⬆ Import range (.csv)</button>
+       </div>
+       <div style="font-size:11px;color:var(--muted);margin-top:6px;">Import re-uses whichever From/To is set above to filter the file — rows outside that range are skipped. Leave both blank to import every row. Matching dates in the shared database are overwritten (same as the existing Import on Daily Summary) — no password, since it's meant for moving data between machines, not casual edits. Imported rows are counts only (no per-device host/IP/user detail), same as a manually-edited day below.</div>
+      </div>
+
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+       <div style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:8px;">
+        Click ✎ next to any date above to edit it, or add a day that isn't in the archive yet — both open the same form. Password required every time (same as re-saving Daily Summary).
+       </div>
+       <button class="btn btn-s btn-sm" onclick="openDayEditModal('')">＋ Add a day</button>
+      </div>
+     </div>
+    </div>
+
+    <!-- MONTHLY REPORT -->
+    <div class="pg" id="pg-report">
+     <div class="card">
+      <div class="ch">
+       <span class="ct">// MONTHLY REPORT</span>
+       <span class="bg bg-b">PC BASIC MEASURE</span>
+      </div>
+      <div class="row" style="justify-content:space-between;margin-bottom:14px;">
+       <span class="status-text">IWSP auto-computes from saved Daily Summary data. SAT-A, Total Device, and Target % are entered manually below and synced to everyone.</span>
+       <div class="row">
+        <label for="reportMonthSelect" style="font-family:var(--mono);font-size:12px;color:var(--muted);">Month:</label>
+        <select id="reportMonthSelect" onchange="renderReportPage()" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;color:var(--text);font-family:var(--mono);font-size:13px;"></select>
+       </div>
+      </div>
+      <div id="reportBody"><div class="empty">Loading…</div></div>
+     </div>
+    </div>
+
+    <!-- ASSET ORGANIZER -->
+    <div class="pg" id="pg-assets">
+     <div class="card">
+      <div class="ch"><span class="ct">// UPLOAD RAW ASSET EXPORT</span></div>
+      <div class="section-desc">Upload the CSV exported from ITAMS. It'll drop the unneeded columns, keep only what's useful, and give you a clean file ready to download.</div>
+      <div class="fg">
+       <div class="ff"><label>CSV file</label><input type="file" id="assetCsvFile" accept=".csv"></div>
+       <div class="ff" style="flex-direction:row;gap:8px;">
+        <button class="btn btn-s btn-sm" onclick="resetAssetOrganizer()">Reset</button>
+       </div>
+      </div>
+      <div id="assetFileStatus" class="status-text" style="margin-top:14px;"></div>
+     </div>
+
+     <div class="card" id="assetResultCard" style="display:none;">
+      <div class="ch">
+       <span class="ct">// CLEANED PREVIEW</span>
+       <div class="ca">
+        <button class="btn btn-i btn-sm" onclick="downloadAssetXLSX()">⬇ Download Excel (.xlsx)</button>
+        <button class="btn btn-s btn-sm" onclick="downloadAssetCSV()">⬇ Download CSV</button>
+       </div>
+      </div>
+      <div id="assetMissingNote" class="status-text" style="margin-bottom:10px;display:none;"></div>
+      <div class="tw" id="assetTableWrap"></div>
+     </div>
+    </div>
+
+   </div>
+  </div>
+ </div>
+</div>
+
+<!-- Day edit/add modal — used by Monthly Archive's (and Daily Summary's) ✎
+     edit buttons, plus "+ Add a day". Shared by both since they render the
+     same weekly table via buildMonthTableHTML(). -->
+<div id="dayEditModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;">
+ <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;width:320px;max-width:92vw;">
+  <div style="font-family:var(--mono);font-size:13px;color:var(--text);font-weight:bold;margin-bottom:14px;" id="dayModalTitle">Edit day</div>
+  <div style="margin-bottom:10px;">
+   <label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:4px;">Date</label>
+   <input type="date" id="dayModalDate" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:13px;padding:8px;">
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+   <div><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:4px;">PF</label>
+    <input type="number" min="0" id="dayModal-PF" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:13px;padding:8px;"></div>
+   <div><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:4px;">WU</label>
+    <input type="number" min="0" id="dayModal-WU" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:13px;padding:8px;"></div>
+   <div><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:4px;">ME</label>
+    <input type="number" min="0" id="dayModal-ME" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:13px;padding:8px;"></div>
+   <div><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:4px;">SF</label>
+    <input type="number" min="0" id="dayModal-SF" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:13px;padding:8px;"></div>
+  </div>
+  <div style="font-size:11px;color:var(--muted);margin-bottom:16px;">Counts only — no per-device host/IP/user detail or Complied checkbox, same as a CSV-imported row. Password required to save.</div>
+  <div class="row" style="justify-content:flex-end;gap:8px;">
+   <button class="btn btn-s btn-sm" onclick="closeDayModal()">Cancel</button>
+   <button class="btn btn-p btn-sm" onclick="saveDayModal()">🔒 Save</button>
+  </div>
+ </div>
+</div>
+
+<script>
+function nav(id){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.toggle('act', p.id==='pg-'+id));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.toggle('act', n.id==='nav-'+id));
+  const titles = {upload:'// UPLOAD & RUN', results:'// RESULTS', summary:'// DAILY SUMMARY', archive:'// MONTHLY ARCHIVE', report:'// MONTHLY REPORT', assets:'// ASSET ORGANIZER'};
+  document.getElementById('pgTitle').textContent = titles[id] || '';
+  if(id === 'results'){
+    const has = Object.keys(results).length > 0;
+    document.getElementById('resultsSection').style.display = has ? 'block' : 'none';
+    document.getElementById('resultsEmpty').style.display = has ? 'none' : 'block';
+  }
+  if(id === 'archive' && typeof renderArchive === 'function') renderArchive();
+  if(id === 'report' && typeof renderReportPage === 'function') renderReportPage();
+}
+window.nav = nav;
+</script>
+<script>
+/* ---------------- CONFIG: header aliases ---------------- */
+const CODE_ORDER = ["PF","WU","ME","SF"];
+const DB_KEY = 'complianceDatabase';
+
+// Password required to overwrite a day that was already saved to the
+// permanent Daily Summary archive (see saveToHistory below). Change this
+// to whatever your team wants — it's checked entirely in the browser, so
+// this is a "prevent accidental re-save" guard, not real security.
+const HISTORY_OVERWRITE_PASSWORD = 'iws2026';
+const COLS = {
+  host:"Host name", user:"User(Name)", ip:"IP address", agentDate:"Agent operation date",
+  wuDate:"Windows Update last updated", patternFile:"Pattern file", usage:"Usage patterns",
+  avName:"Anti-virus S/W name", bitlocker:"BitLocker synthesis judgment(encryption state)",
+  shared:"Shared folder", opStatus:"Operation status"
+};
+
+// Shorter column headers for the Results tables only. Matching/filtering and
+// the CSV's own column names (COLS above) are untouched — this only changes
+// what's printed in the <th>, not which field is read from each row.
+const EXTRA_FIELD_DISPLAY = {
+  [COLS.wuDate]: "LastUpdate",
+  [COLS.bitlocker]: "EncryptionState"
+};
+function displayLabelFor(field){ return EXTRA_FIELD_DISPLAY[field] || field; }
+
+let parsedRows = [];
+let headerMap = {};
+let results = {}; // category -> array of {row, reasons}
+let categories = [];
+let filenameDetectedDate = null; // set from CSV filename on upload — authoritative for save/export when present
+let loadedResultsDate = null; // the date (YYYY-MM-DD) the currently-displayed Upload&Run/Results content represents
+let viewingHistorical = false; // true only when the user deliberately loaded an older saved date via "Load into tabs"
+
+document.getElementById('reportDate').valueAsDate = new Date();
+renderRuleRef();
+renderHistory();
+initConnStatus();
+initClock();
+document.getElementById('reportDate').addEventListener('change', function(){
+  filenameDetectedDate = null; // manual edit overrides the filename-detected date
+  renderRuleRef();
+});
+
+/* ---------------- CLOCK + CONNECTION STATUS ---------------- */
+function initClock(){
+  function tick(){
+    const d = new Date();
+    document.getElementById('clock').textContent = d.toLocaleString('en-US', {
+      weekday:'short', month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true
+    }).replace(',', ',');
+  }
+  tick(); setInterval(tick, 1000);
+}
+async function initConnStatus(){
+  await checkConn();
+  await autoLoadTodayFromServer();
+  setInterval(checkConn, 15000);
+  // Full auto-sync every 30 seconds — pulls the latest "current" live
+  // report and refreshes Daily Summary/Monthly Archive. Runs a plain GET,
+  // never a write, so it never competes with anyone else's save: the
+  // SQLite backend is in WAL mode specifically so this refresh is never
+  // blocked or delayed by another PC saving data at the same moment (see
+  // server.py). Monthly Report deliberately ISN'T refreshed by this timer
+  // at all (see renderReportPage callers) — that page has editable SAT-A/
+  // Total Device/Target fields, and an auto-refresh mid-typing would wipe
+  // out whatever you were in the middle of entering; it only reloads when
+  // you navigate to it or save your own changes.
+  setInterval(async ()=>{
+    await checkConn();
+    await renderHistory();
+    await autoLoadTodayFromServer();
+  }, 30000);
+
+  // Also sync the instant the tab becomes visible/focused again — e.g. someone
+  // switching back to an already-open browser tab shouldn't have to wait for
+  // the next 30-second tick to see the latest data.
+  const instantSync = async ()=>{
+    await checkConn();
+    await autoLoadTodayFromServer();
+  };
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState === 'visible') instantSync();
+  });
+  window.addEventListener('focus', instantSync);
+}
+async function checkConn(){
+  const dot = document.getElementById('syncDot2');
+  const dotTop = document.getElementById('syncDotTop');
+  const txt = document.getElementById('connText');
+  const modeBadge = document.getElementById('dbModeBadge');
+  const modeBadge2 = document.getElementById('dbModeBadge2');
+  const modeText = document.getElementById('dbModeText');
+  const banner = document.getElementById('fileWarningBanner');
+  if(!USE_SERVER_DB){
+    dot.className = 'pd pf';
+    if(dotTop) dotTop.className = 'pd pf';
+    txt.textContent = 'Local file (no server)';
+    modeBadge.textContent = 'LOCAL JSON';
+    if(modeBadge2) modeBadge2.textContent = 'LOCAL JSON';
+    modeText.textContent = 'Saved runs, recorded only in this browser. Open this tool via the network address (http://<server-ip>:8000) instead of double-clicking the file, so everyone shares one database.';
+    if(banner) banner.style.display = 'flex';
+    return;
+  }
+  if(banner) banner.style.display = 'none';
+  try{
+    const controller = new AbortController();
+    const timeoutId = setTimeout(()=>controller.abort(), 5000); // don't let "Checking..." hang forever
+    let r;
+    try{
+      r = await fetch('/api/health', {cache:'no-store', signal: controller.signal});
+    } finally {
+      clearTimeout(timeoutId);
+    }
+    if(r.ok){
+      dot.className = 'pd po';
+      if(dotTop) dotTop.className = 'pd po';
+      txt.textContent = 'Connected — ' + location.host;
+      modeBadge.textContent = 'SHARED JSON';
+      if(modeBadge2) modeBadge2.textContent = 'SHARED JSON';
+      modeText.textContent = 'Saved runs are recorded centrally in the network database — visible to everyone using this tool.';
+    } else {
+      throw new Error('HTTP '+r.status);
+    }
+  }catch(e){
+    dot.className = 'pd pf';
+    if(dotTop) dotTop.className = 'pd pf';
+    if(e.name === 'AbortError'){
+      // Request hung for 5s with no response at all — usually a firewall silently
+      // dropping the packets rather than rejecting the connection outright.
+      txt.textContent = 'Timed out — ' + location.host;
+      modeText.textContent = 'The request to '+location.host+' timed out with no response. This usually means a firewall on the host PC is silently blocking the connection (rather than actively refusing it) — check Windows Firewall inbound rules for this port on Private networks.';
+    } else {
+      txt.textContent = 'Unreachable — ' + location.host;
+      modeText.textContent = 'Could not reach the server at '+location.host+'. On the host PC, confirm server.py is running and that Windows Firewall allows inbound connections on this port for Private networks.';
+    }
+    modeBadge.textContent = 'OFFLINE';
+    if(modeBadge2) modeBadge2.textContent = 'OFFLINE';
+  }
+}
+
+async function syncNow(btn){
+  if(btn) btn.classList.add('syncing');
+  await checkConn();
+  await renderHistory();
+  await autoLoadTodayFromServer(); // was missing — Sync button didn't touch Results before
+  if(btn) setTimeout(()=>btn.classList.remove('syncing'), 300);
+}
+window.syncNow = syncNow;
+
+/* ---------------- DATE HELPERS ---------------- */
+function reportDate(){
+  if(filenameDetectedDate) return new Date(filenameDetectedDate+"T00:00:00");
+  const v = document.getElementById('reportDate').value;
+  return v ? new Date(v+"T00:00:00") : new Date();
+}
+function shiftDate(base, amount, unit){
+  const d = new Date(base);
+  if(unit==='d') d.setDate(d.getDate()+amount);
+  if(unit==='m') d.setMonth(d.getMonth()+amount);
+  return d;
+}
+function fmt(d){
+  // Local calendar date, NOT toISOString() — toISOString() converts to UTC first,
+  // which rolls midnight back to the previous day in timezones ahead of UTC
+  // (e.g. Philippines, UTC+8). That was the source of dates saving one day early.
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function parseAnyDate(str){
+  if(!str) return null;
+  let s = str.trim();
+  if(!s) return null;
+  // strip suffixes like "_01" after a date, and trailing time text after space if not needed
+  // ISO format: 2026-05-20 or 2026-05-20_01 or 2026-05-20 19:25
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m){
+    return new Date(parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]));
+  }
+  // DD/MM/YYYY or DD/MM/YYYY HH:mm
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m){
+    return new Date(parseInt(m[3]), parseInt(m[2])-1, parseInt(m[1]));
+  }
+  // YYYY/MM/DD
+  m = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+  if(m){
+    return new Date(parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]));
+  }
+  // fallback
+  let d = new Date(s);
+  if(!isNaN(d.getTime())) return d;
+  return null;
+}
+
+function getMacros(){
+  const rd = reportDate();
+  return {
+    week1: shiftDate(rd,-7,'d'),   // 1 week ago
+    week2: shiftDate(rd,-14,'d'),  // 2 weeks ago
+    month2: shiftDate(rd,-2,'m'),  // 2 months ago
+    today: rd
+  };
+}
+
+/* ---------------- RULE DEFINITIONS ---------------- */
+// Each template: name, rows[] (field, op, value-or-macro, join 'AND'/'OR' relative to previous)
+// Engine: leading AND rows form prefix; once first OR appears, subsequent rows form an OR-group;
+// final = prefix(AND all) && (orGroup.length ? ANY(orGroup) : true)
+function buildTemplates(){
+  const m = getMacros();
+  return [
+    {
+      key:"pattern",
+      code:"PF",
+      label:"WithSecure Pattern File",
+      title:"PATTERNFILE2026",
+      rows:[
+        {field:COLS.agentDate, op:"date_gte", value:m.week1, join:"AND", desc:"Agent checked in within last 7 days (active device)"},
+        {field:COLS.avName, op:"not_empty", value:null, join:"AND", desc:"Anti-virus S/W name is not blank"},
+        {field:COLS.avName, op:"includes", value:"Secure", join:"AND", desc:"Anti-virus S/W name includes 'Secure'"},
+        {field:COLS.patternFile, op:"date_lt", value:m.week2, join:"AND", desc:"Pattern file older than 14 days"},
+        {field:COLS.ip, op:"starts_with", value:"172.1", join:"AND", desc:"IP address starts with 172.1"},
+        {field:COLS.usage, op:"not_match", value:"Server", join:"AND", desc:"Usage pattern is not Server"}
+      ]
+    },
+    {
+      key:"wsus",
+      code:"WU",
+      label:"Windows Update",
+      title:"WINDOWSUPDATE2025",
+      rows:[
+        {field:COLS.wuDate, op:"date_gte", value:new Date("2024-01-01"), join:"AND", desc:"Windows Update date from 2024-01-01"},
+        {field:COLS.wuDate, op:"date_lte", value:m.month2, join:"AND", desc:"Windows Update date older than 2 months ago"},
+        {field:COLS.ip, op:"starts_with", value:"172.1", join:"AND", desc:"IP address starts with 172.1"},
+        {field:COLS.usage, op:"not_match", value:"Server", join:"AND", desc:"Usage pattern is not Server"}
+      ]
+    },
+    {
+      key:"mobile",
+      code:"ME",
+      label:"Mobile Encryption",
+      title:"MOBILEENCRYPTION2025",
+      rows:[
+        {field:COLS.usage, op:"match", value:"Mobile PC", join:"AND", desc:"Usage pattern = Mobile PC"},
+        {field:COLS.bitlocker, op:"match", value:"Partial unencrypted", join:"OR", desc:"BitLocker = Partial unencrypted"}, {field:COLS.bitlocker, op:"match", value:"Encryption", join:"OR", desc:"BitLocker = Encryption"}
+      ]
+    },
+    {
+      key:"shared",
+      code:"SF",
+      label:"Shared Folder",
+      title:"SHARED_FOLDER",
+      rows:[
+        {field:COLS.shared, op:"not_empty", value:null, join:"AND", desc:"Shared folder field is not blank"},
+        {field:COLS.usage, op:"not_match", value:"Server", join:"AND", desc:"Usage pattern is not Server"},
+        {field:COLS.ip, op:"starts_with", value:"172.1", join:"AND", desc:"IP address starts with 172.1"},
+        {field:COLS.shared, op:"excludes", value:"C:\\Windows\\system32\\spool\\drivers;", join:"AND", desc:"Excludes whitelisted path: spool\\drivers"},
+        {field:COLS.shared, op:"excludes", value:"C:\\SWS\\CmnBs;", join:"AND", desc:"Excludes whitelisted path: SWS\\CmnBs"},
+        {field:COLS.shared, op:"excludes", value:"C:\\SWS\\Sabro;", join:"AND", desc:"Excludes whitelisted path: SWS\\Sabro"},
+        {field:COLS.shared, op:"excludes", value:"C:\\CmnBs;", join:"AND", desc:"Excludes whitelisted path: CmnBs"}
+      ]
+    }
+  ];
+}
+
+function renderRuleRef(){
+  const t = buildTemplates();
+  const m = getMacros();
+  let html = `<b>Macro dates for this report (${fmt(reportDate())})</b>: 1wk ago=${fmt(m.week1)} · 2wk ago=${fmt(m.week2)} · 2mo ago=${fmt(m.month2)}<br><br>`;
+  t.forEach(tpl=>{
+    html += `<b>${tpl.title}</b> (${tpl.label})<br>`;
+    tpl.rows.forEach((r,i)=>{
+      html += `&nbsp;&nbsp;${i+1}. [${r.join}] ${r.desc}<br>`;
+    });
+    html += `<br>`;
+  });
+  document.getElementById('ruleRef').innerHTML = html;
+}
+
+/* ---------------- OPERATORS ---------------- */
+function evalCondition(rowVal, cond){
+  const v = (rowVal||"").toString();
+  const vTrim = v.trim();
+  switch(cond.op){
+    case "not_empty": return vTrim !== "";
+    case "is_empty": return vTrim === "";
+    case "includes": return v.toLowerCase().includes(String(cond.value).toLowerCase());
+    case "excludes": return !v.toLowerCase().includes(String(cond.value).toLowerCase());
+    case "starts_with": return v.toLowerCase().startsWith(String(cond.value).toLowerCase());
+    case "match": return v.trim().toLowerCase() === String(cond.value).trim().toLowerCase();
+    case "not_match": return v.trim().toLowerCase() !== String(cond.value).trim().toLowerCase();
+    case "date_gte": { const d=parseAnyDate(v); return d ? d.getTime() >= cond.value.getTime() : false; }
+    case "date_lte": { const d=parseAnyDate(v); return d ? d.getTime() <= cond.value.getTime() : false; }
+    case "date_lt":  { const d=parseAnyDate(v); return d ? d.getTime() < cond.value.getTime() : false; }
+    case "date_gt":  { const d=parseAnyDate(v); return d ? d.getTime() > cond.value.getTime() : false; }
+    default: return false;
+  }
+}
+
+function rowMatchesTemplate(row, tpl){
+  let prefix = [];
+  let orGroup = [];
+  let seenOr = false;
+  tpl.rows.forEach(r=>{
+    if(r.join === "OR") seenOr = true;
+    if(seenOr) orGroup.push(r); else prefix.push(r);
+  });
+  const prefixOk = prefix.every(c => evalCondition(row[c.field], c));
+  if(!prefixOk) return false;
+  if(orGroup.length === 0) return true;
+  return orGroup.some(c => evalCondition(row[c.field], c));
+}
+
+/* ---------------- CSV PARSING ---------------- */
+function parseCSV(text){
+  const rows = [];
+  let cur = [], field = "", inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field+='"'; i++; } else inQuotes = false;
+      } else field += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ','){ cur.push(field); field=""; }
+      else if(c === '\n'){ cur.push(field); rows.push(cur); cur=[]; field=""; }
+      else if(c === '\r'){ /* skip */ }
+      else field += c;
+    }
+  }
+  if(field.length || cur.length){ cur.push(field); rows.push(cur); }
+  return rows.filter(r => r.length>1 || (r.length===1 && r[0]!==""));
+}
+
+document.getElementById('csvFile').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+
+  // If there's already data loaded (a previous upload this session, or
+  // results auto-pulled from the shared database), confirm before replacing
+  // it — uploading a new file always starts fresh.
+  if(parsedRows.length || Object.keys(results).length){
+    const ok = confirm("You already have data loaded. Uploading a new file will clear the current results on this page and in Results. Are you sure you want to continue?");
+    if(!ok){
+      e.target.value = ""; // cancel the file selection
+      return;
+    }
+  }
+  clearWorkingResults();
+
+  // Auto-detect report date from filename, e.g. InventoryList_20260701091901298.csv -> 2026-07-01
+  const m = file.name.match(/(\d{4})(\d{2})(\d{2})\d{6,}/);
+  if(m){
+    const y = m[1], mo = m[2], da = m[3];
+    filenameDetectedDate = `${y}-${mo}-${da}`;
+    document.getElementById('reportDate').value = filenameDetectedDate;
+    renderRuleRef();
+    document.getElementById('fileStatus').textContent = `Loading ${file.name}... (report date set to ${filenameDetectedDate} from filename)`;
+  } else {
+    filenameDetectedDate = null;
+    document.getElementById('fileStatus').textContent = "Loading "+file.name+"... (couldn't detect date from filename, using Report date field)";
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const text = ev.target.result;
+    const raw = parseCSV(text);
+    const headers = raw[0].map(h=>h.trim().replace(/^\uFEFF/, ''));
+    parsedRows = raw.slice(1)
+      .map(r=>{
+        const obj = {};
+        headers.forEach((h,idx)=> obj[h] = r[idx] !== undefined ? r[idx] : "");
+        return obj;
+      })
+      .filter(obj => (obj[COLS.host]||"").trim() !== "");
+    document.getElementById('fileStatus').textContent = `Loaded ${parsedRows.length} devices from ${file.name} — report date: ${document.getElementById('reportDate').value}`;
+  };
+  reader.readAsText(file);
+});
+
+/* ---------------- RUN ---------------- */
+function runFilters(){
+  if(!parsedRows.length){ alert("Please upload a CSV export first."); return; }
+  const templates = buildTemplates();
+  results = {};
+  categories = templates.map(t=>t.key);
+
+  templates.forEach(tpl=>{
+    results[tpl.key] = {
+      key: tpl.key, label: tpl.label, title: tpl.title, code: tpl.code,
+      rows: parsedRows.filter(row => rowMatchesTemplate(row, tpl))
+    };
+  });
+
+  loadedResultsDate = fmt(reportDate());
+  viewingHistorical = false;
+  renderSummary(templates);
+  renderTabs(templates);
+  if(typeof nav === 'function') nav('results');
+  syncRunToServer(); // push immediately — no debounce — so other PCs see it ASAP
+}
+
+function renderSummary(templates){
+  const grid = document.getElementById('summaryGrid');
+  grid.innerHTML = "";
+  let total = 0;
+  const colorMap = {PF:'g', WU:'b', ME:'o', SF:'p'};
+  const valColor = {g:'var(--accent)', b:'var(--accent2)', o:'var(--accent3)', p:'var(--purple)'};
+  templates.forEach(tpl=>{
+    const n = results[tpl.key].rows.length;
+    total += n;
+    const c = colorMap[tpl.code] || 'g';
+    grid.innerHTML += `<div class="sc ${c}">
+      <div class="sc-lbl">${tpl.code} · ${tpl.label}</div>
+      <div class="sc-val" style="color:${valColor[c]};">${n}</div>
+      <span class="bg ${n>0?'bg-r':'bg-g'}">${n>0?'NON-COMPLIANT':'CLEAN'}</span>
+    </div>`;
+  });
+  grid.innerHTML += `<div class="sc"><div class="sc-lbl">Total flagged (incl. dupes)</div><div class="sc-val">${total}</div></div>`;
+  document.getElementById('summarySection').style.display = "block";
+}
+
+function renderTabs(templates){
+  const tabsEl = document.getElementById('tabs');
+  const panelsEl = document.getElementById('panels');
+  tabsEl.innerHTML = "";
+  panelsEl.innerHTML = "";
+  templates.forEach((tpl,i)=>{
+    const n = results[tpl.key].rows.length;
+    const tab = document.createElement('div');
+    tab.className = 'tab' + (i===0?' active':'');
+    tab.textContent = `${tpl.code} (${n})`;
+    tab.onclick = ()=> switchTab(tpl.key);
+    tab.dataset.key = tpl.key;
+    tabsEl.appendChild(tab);
+
+    const panel = document.createElement('div');
+    panel.className = 'panel' + (i===0?' active':'');
+    panel.id = 'panel-'+tpl.key;
+    panel.innerHTML = buildTable(results[tpl.key]);
+    panelsEl.appendChild(panel);
+  });
+  document.getElementById('resultsSection').style.display = "block";
+  const emptyEl = document.getElementById('resultsEmpty');
+  if(emptyEl) emptyEl.style.display = "none";
+}
+
+function switchTab(key){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.key===key));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active', p.id==='panel-'+key));
+}
+
+function extraFieldFor(label){
+  return {
+    "WithSecure Pattern File": COLS.patternFile,
+    "Windows Update": COLS.wuDate,
+    "Mobile Encryption": COLS.bitlocker,
+    "Shared Folder": COLS.shared
+  }[label];
+}
+
+function buildTable(catResult){
+  const toolbar = `<div class="table-toolbar">
+      <span class="tcount">${catResult.code} <span style="color:var(--muted);font-weight:500;">— ${catResult.rows.length} non-compliant device${catResult.rows.length===1?'':'s'}</span></span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-i btn-sm" onclick="pingAllInCategory('${catResult.code}', this)">📶 Ping All</button>
+        <button class="btn btn-s btn-sm copybtn" data-key="${catResult.key||''}" onclick="copyTable(this)">📋 Copy</button>
+      </div>
+    </div>`;
+  if(!catResult.rows.length) return toolbar + `<div class="empty">✅ No non-compliant devices found.</div>`;
+  const extraField = extraFieldFor(catResult.label);
+  let html = toolbar + `<table id="tbl-${catResult.code}"><thead><tr><th>Host name</th><th>User(Name)</th><th>IP address</th><th>${displayLabelFor(extraField)}</th><th>Status</th><th style="text-align:right;">Complied</th></tr></thead><tbody>`;
+  catResult.rows.forEach((r,idx)=>{
+    const checked = r.__complied ? 'checked' : '';
+    const rowClass = r.__complied ? ' class="complied-row"' : '';
+    const ip = esc(r[COLS.ip]);
+    html += `<tr${rowClass}><td>${esc(r[COLS.host])}</td><td>${esc(r[COLS.user])}</td><td>${ip}</td><td>${esc(r[extraField])}</td><td><button class="btn btn-s btn-sm ping-btn" data-ip="${ip}" onclick="pingDevice(this)">📶 Ping</button><span class="ping-status"></span></td><td style="text-align:right;"><input type="checkbox" class="complied-cb" data-cat="${catResult.key}" data-idx="${idx}" ${checked} onchange="toggleComplied(this)"></td></tr>`;
+  });
+  html += `</tbody></table>`;
+  return html;
+}
+function esc(v){ return (v||"").toString().replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+async function pingDevice(btn){
+  const ip = btn.dataset.ip;
+  const statusEl = btn.nextElementSibling;
+  if(!ip){ if(statusEl){ statusEl.textContent = 'no IP'; statusEl.style.color = 'var(--text2)'; } return; }
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '…';
+  if(statusEl){ statusEl.textContent = ''; }
+  try{
+    const r = await fetch('/api/ping', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ip})
+    });
+    const data = await r.json();
+    if(data.online){
+      if(statusEl){ statusEl.textContent = '● Online'; statusEl.style.color = 'var(--accent)'; }
+    } else {
+      if(statusEl){ statusEl.textContent = '● Offline'; statusEl.style.color = 'var(--danger)'; }
+    }
+  }catch(e){
+    if(statusEl){ statusEl.textContent = '● Error'; statusEl.style.color = 'var(--text2)'; }
+  }
+  btn.disabled = false;
+  btn.textContent = orig;
+}
+window.pingDevice = pingDevice;
+
+async function pingAllInCategory(code, btn){
+  const table = document.getElementById('tbl-'+code);
+  if(!table) return;
+  const btns = Array.from(table.querySelectorAll('.ping-btn'));
+  if(btn){ btn.disabled = true; }
+  for(const b of btns){
+    await pingDevice(b);
+  }
+  if(btn){ btn.disabled = false; }
+}
+window.pingAllInCategory = pingAllInCategory;
+
+
+function toggleComplied(cb){
+  const catKey = cb.dataset.cat;
+  const idx = parseInt(cb.dataset.idx, 10);
+  if(!results[catKey] || !results[catKey].rows[idx]) return;
+  results[catKey].rows[idx].__complied = cb.checked;
+  const tr = cb.closest('tr');
+  if(tr) tr.classList.toggle('complied-row', cb.checked);
+  scheduleAutoSync();
+}
+window.toggleComplied = toggleComplied;
+
+// Reads a table cell's effective value for copy/export: checkbox cells become
+// Yes/No text instead of an empty string (since checkbox inputs have no textContent).
+function cellValue(cell){
+  const cb = cell.querySelector('input[type=checkbox]');
+  if(cb) return cb.checked ? 'Yes' : 'No';
+  const pingStatus = cell.querySelector('.ping-status');
+  if(pingStatus){
+    const t = pingStatus.textContent.trim();
+    return t || 'Not pinged';
+  }
+  return cell.textContent;
+}
+
+/* ---------------- COPY TO CLIPBOARD ---------------- */
+function tableToTSV(table){
+  const rows = Array.from(table.querySelectorAll('tr'));
+  return rows.map(tr =>
+    Array.from(tr.children).map(td => cellValue(td).replace(/\t/g,' ').replace(/\n/g,' ')).join('\t')
+  ).join('\n');
+}
+
+// Builds a standalone HTML table string (with inline borders) from a live <table> element,
+// so pasting into Teams/Outlook/Word renders an actual grid instead of plain text.
+function tableElToHTML(table, heading){
+  const th = 'style="border:1px solid #999;background:#eee;color:#000;padding:4px 8px;font-family:Calibri,Arial,sans-serif;font-size:13px;text-align:left;"';
+  const td = 'style="border:1px solid #999;color:#000;padding:4px 8px;font-family:Calibri,Arial,sans-serif;font-size:13px;"';
+  let out = '';
+  if(heading) out += `<p style="font-family:Calibri,Arial,sans-serif;font-weight:bold;margin:6px 0 2px;">${heading}</p>`;
+  out += `<table style="border-collapse:collapse;margin-bottom:10px;">`;
+  Array.from(table.querySelectorAll('tr')).forEach((tr,i)=>{
+    out += '<tr>';
+    Array.from(tr.children).forEach(cell=>{
+      const tag = (i===0) ? 'th' : 'td';
+      const styleAttr = (i===0) ? th : td;
+      out += `<${tag} ${styleAttr}>${esc(cellValue(cell))}</${tag}>`;
+    });
+    out += '</tr>';
+  });
+  out += `</table>`;
+  return out;
+}
+
+async function copyRich(html, text, btn){
+  let ok = false;
+
+  // PRIMARY: legacy DOM-selection copy. Unlike the async Clipboard API's HTML
+  // write, this is NOT gated behind window.isSecureContext, so it still copies
+  // real table formatting when this page is opened over plain http://<lan-ip>
+  // (which is not considered a "secure context" and would otherwise silently
+  // fall back to plain tab-separated text — the cause of tables pasting as
+  // plain text in Teams instead of an actual grid).
+  try{
+    const container = document.createElement('div');
+    container.setAttribute('contenteditable', 'true');
+    container.style.position = 'fixed';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.whiteSpace = 'pre';
+    container.innerHTML = html || esc(text).replace(/\n/g, '<br>');
+    document.body.appendChild(container);
+    const range = document.createRange();
+    range.selectNodeContents(container);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    ok = document.execCommand('copy');
+    sel.removeAllRanges();
+    document.body.removeChild(container);
+  }catch(e){ ok = false; }
+
+  // FALLBACK 1: modern async Clipboard API with HTML (only works on secure
+  // contexts — https:// or localhost — so mainly helps when accessed that way).
+  if(!ok){
+    try{
+      if(navigator.clipboard && window.ClipboardItem && window.isSecureContext){
+        const item = new ClipboardItem({
+          'text/html': new Blob([html], {type:'text/html'}),
+          'text/plain': new Blob([text], {type:'text/plain'})
+        });
+        await navigator.clipboard.write([item]);
+        ok = true;
+      }
+    }catch(e){ ok = false; }
+  }
+
+  // FALLBACK 2: plain text only, via async Clipboard API or a hidden textarea.
+  if(!ok){
+    try{
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    }catch(e){
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      ok = true;
+    }
+  }
+  if(btn){
+    const orig = btn.textContent;
+    btn.textContent = "✅ Copied";
+    setTimeout(()=> btn.textContent = orig, 1200);
+  }
+}
+
+function copyTable(btn){
+  const panel = btn.closest('.panel') || btn.closest('.card');
+  const table = panel.querySelector('table');
+  if(!table){ copyRich("", "", btn); return; }
+  copyRich(tableElToHTML(table), tableToTSV(table), btn);
+}
+function copySummaryTable(btn){
+  const table = document.getElementById('summaryHistoryTable');
+  if(!table) return;
+  copyRich(tableElToHTML(table, "Daily Summary"), tableToTSV(table), btn);
+}
+
+// Copies all four category tables (PF/WU/ME/SF) together as one rich block,
+// so pasting once into Teams shows all four tables in sequence.
+function copyAllForTeams(btn){
+  if(!Object.keys(results).length){ alert("Run the filters first."); return; }
+  let htmlParts = [];
+  let textParts = [];
+  CODE_ORDER.forEach(code=>{
+    const r = Object.values(results).find(v=>v.code===code);
+    if(!r) return;
+    const table = document.getElementById('tbl-'+code);
+    if(table){
+      htmlParts.push(tableElToHTML(table, `${r.code} - ${r.rows.length}`));
+      textParts.push(`${r.code} - ${r.rows.length}\n${tableToTSV(table)}`);
+    } else {
+      htmlParts.push(`<p style="font-family:Calibri,Arial,sans-serif;font-weight:bold;">${r.code} - 0</p><p style="font-family:Calibri,Arial,sans-serif;">No non-compliant devices found.</p>`);
+      textParts.push(`${r.code} - 0\nNo non-compliant devices found.`);
+    }
+  });
+  copyRich(htmlParts.join(''), textParts.join('\n\n'), btn);
+}
+
+/* ---------------- EXPORT ---------------- */
+function toCSV(rows, label){
+  let out = `Category,Host name,User(Name),IP address,Complied\n`;
+  rows.forEach(r=>{
+    out += `"${label}","${(r[COLS.host]||"").replace(/"/g,'""')}","${(r[COLS.user]||"").replace(/"/g,'""')}","${(r[COLS.ip]||"").replace(/"/g,'""')}","${r.__complied?'Yes':'No'}"\n`;
+  });
+  return out;
+}
+function download(filename, content){
+  const blob = new Blob([content], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+function exportCurrent(){
+  const activeTab = document.querySelector('.tab.active');
+  if(!activeTab) return;
+  const key = activeTab.dataset.key;
+  const r = results[key];
+  download(`${r.title}_${fmt(reportDate())}.csv`, toCSV(r.rows, r.label));
+}
+function exportAll(){
+  let out = `Category,Host name,User(Name),IP address,Complied\n`;
+  Object.values(results).forEach(r=>{
+    r.rows.forEach(row=>{
+      out += `"${r.label}","${(row[COLS.host]||"").replace(/"/g,'""')}","${(row[COLS.user]||"").replace(/"/g,'""')}","${(row[COLS.ip]||"").replace(/"/g,'""')}","${row.__complied?'Yes':'No'}"\n`;
+    });
+  });
+  download(`Compliance_FullReport_${fmt(reportDate())}.csv`, out);
+}
+
+/* ---------------- CENTRALIZED DATABASE ----------------
+   Matches the sync model used in the user's other in-house tools (e.g. SUS):
+   the WHOLE database is fetched with GET /api/data and saved wholesale with
+   POST /api/data — not per-date REST calls. The server stores it as one JSON
+   file on disk (compliance_data.json) on the host PC, shared by everyone on
+   the network. When opened directly as a local file (file://) with no server,
+   it falls back to this browser's localStorage so the tool still works
+   standalone, offline, or for quick testing.
+
+   Two separate things live in this one blob:
+   - "current": the SINGLE live report shown on Upload & Run / Results.
+     Whatever was run/uploaded most recently is the only thing here — running
+     a new CSV completely REPLACES it (the old one is gone), and every PC
+     always mirrors this same single slot, full stop. This is what makes
+     "site content is the same whenever I access it" actually true.
+   - "reports": the PERMANENT dated archive used by Daily Summary. Only
+     touched by the explicit "Save today's run to database" button — routine
+     auto-sync of the live view never writes here, so historical trend data
+     is never silently lost just because someone ran a new CSV.
+
+   Wire shape: { "current": {reportDate, savedAt, records}, "reports": { "2026-06-30": {...} } } */
+const USE_SERVER_DB = location.protocol !== 'file:';
+const CURRENT_KEY = 'complianceCurrent'; // localStorage fallback key for the live "current" slot
+
+// IMPORTANT: while USE_SERVER_DB is true, these NEVER silently fall back to
+// localStorage on failure — that was the actual bug behind "results aren't
+// syncing to other PCs". A failed GET/POST used to quietly read/write this
+// one browser's own localStorage instead and still report success, so a
+// firewall hiccup or the server being briefly unreachable could make a PC
+// look like it saved fine while the shared file never changed at all, and
+// nothing ever told you. Now a failure THROWS, so callers know it actually
+// failed and can tell you. localStorage is only used at all when there's no
+// server (USE_SERVER_DB is false — i.e. opened as a local file).
+async function fetchFullBlob(){
+  if(USE_SERVER_DB){
+    const r = await fetch('/api/data', {cache:'no-store'});
+    if(!r.ok) throw new Error('Server responded '+r.status);
+    const data = await r.json();
+    if(!data || typeof data !== 'object') throw new Error('Unexpected response from server');
+    data.reports = data.reports || {};
+    data.current = data.current || null;
+    return data;
+  }
+  return {
+    reports: JSON.parse(localStorage.getItem(DB_KEY)||"{}"),
+    current: JSON.parse(localStorage.getItem(CURRENT_KEY)||"null")
+  };
+}
+async function postFullBlob(blob){
+  if(USE_SERVER_DB){
+    const r = await fetch('/api/data', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(blob)
+    });
+    if(!r.ok) throw new Error('Server responded '+r.status);
+    return true;
+  }
+  localStorage.setItem(DB_KEY, JSON.stringify(blob.reports||{}));
+  localStorage.setItem(CURRENT_KEY, JSON.stringify(blob.current||null));
+  return true;
+}
+
+async function loadDB(){
+  const blob = await fetchFullBlob();
+  return blob.reports || {};
+}
+async function saveDBEntry(date, entry){
+  const blob = await fetchFullBlob();
+  blob.reports[date] = entry;
+  return await postFullBlob(blob);
+}
+async function mergeDB(incoming){
+  const blob = await fetchFullBlob();
+  Object.assign(blob.reports, incoming);
+  return await postFullBlob(blob);
+}
+async function clearDB(){
+  const blob = await fetchFullBlob();
+  blob.reports = {};
+  return await postFullBlob(blob);
+}
+
+// The "current" live report — a single slot, not date-keyed. Replacing it
+// (via saveCurrentToServer) discards whatever was there before.
+async function loadCurrent(){
+  const blob = await fetchFullBlob();
+  return blob.current || null;
+}
+async function saveCurrentToServer(currentObj){
+  const blob = await fetchFullBlob();
+  blob.current = currentObj;
+  return await postFullBlob(blob);
+}
+async function clearCurrentOnServer(){
+  const blob = await fetchFullBlob();
+  blob.current = null;
+  return await postFullBlob(blob);
+}
+
+function buildRecordsPayload(){
+  const records = {};
+  Object.values(results).forEach(v=>{
+    const extraField = extraFieldFor(v.label);
+    records[v.code] = v.rows.map(r=>({
+      "Host name": r[COLS.host]||"",
+      "User(Name)": r[COLS.user]||"",
+      "IP address": r[COLS.ip]||"",
+      [extraField]: r[extraField]||"",
+      "Complied": !!r.__complied
+    }));
+  });
+  return records;
+}
+
+// Pushes the in-memory results to the server as ONE read-modify-write, so
+// "current" (the live mirror every PC's Upload & Run / Results page shows)
+// and "reports[date]" (the permanent Daily Summary archive) can never step
+// on each other the way two separate fetch/post cycles could.
+//  - blob.current is ALWAYS updated — this is what makes Results sync to
+//    every other PC, unconditionally, every time filters are run.
+//  - blob.reports[date] is updated too, UNLESS that date is already saved,
+//    in which case it's password-gated (same rule as before).
+// Returns true if the history archive was written (false if a password
+// prompt was cancelled/wrong — "current" still gets pushed either way, so
+// Results always stays in sync even if the archive write was declined).
+async function syncRunToServer(){
+  if(!Object.keys(results).length) return false;
+  const date = fmt(reportDate());
+  const records = buildRecordsPayload();
+  const savedAt = new Date().toISOString();
+
+  try{
+    const blob = await fetchFullBlob();
+    blob.current = { reportDate: date, savedAt, records };
+
+    let historySaved = true;
+    if(blob.reports[date]){
+      const entered = prompt("A daily summary for "+date+" is already saved and is permanent.\nEnter the password to overwrite it:");
+      if(entered === null){ historySaved = false; }
+      else if(entered !== HISTORY_OVERWRITE_PASSWORD){
+        alert("Incorrect password. The saved summary for "+date+" was NOT changed.");
+        historySaved = false;
+      }
+    }
+    if(historySaved) blob.reports[date] = { savedAt, records };
+
+    await postFullBlob(blob);
+    if(historySaved) await renderHistory();
+    await checkConn();
+    return historySaved;
+  }catch(e){
+    await checkConn(); // refresh the connection dot so it reflects the failure too
+    alert("⚠ Could not reach the server — this run was NOT pushed to the shared database, so other PCs will NOT see it yet.\n\n"+(e && e.message ? e.message : e)+"\n\nCheck the connection status in the sidebar, then click the 'Sync' button (top right) or re-run filters once it's reachable again.");
+    return false;
+  }
+}
+window.syncRunToServer = syncRunToServer;
+
+async function saveToHistory(){
+  if(!Object.keys(results).length){ alert("Run the filters first."); return; }
+  const ok = await syncRunToServer();
+  await checkConn();
+  if(ok) alert("Saved run for "+fmt(reportDate())+" to the "+(USE_SERVER_DB?"shared":"local")+" database.");
+}
+
+// Debounced version of syncRunToServer() for high-frequency changes (ticking
+// Complied checkboxes) so each click doesn't fire its own network round-trip.
+// "Run Filters" itself calls syncRunToServer() directly, undebounced, so a
+// fresh run reaches other PCs as fast as possible.
+let autoSyncTimer = null;
+function scheduleAutoSync(){
+  if(!Object.keys(results).length) return;
+  clearTimeout(autoSyncTimer);
+  autoSyncTimer = setTimeout(syncRunToServer, 800);
+}
+window.scheduleAutoSync = scheduleAutoSync;
+
+// Monday on/before the given date, at midnight local time.
+function mondayOf(d){
+  const day = d.getDay(); // 0=Sun..6=Sat
+  const diff = (day===0 ? -6 : 1-day);
+  const m = new Date(d);
+  m.setDate(d.getDate()+diff);
+  m.setHours(0,0,0,0);
+  return m;
+}
+function addDays(d, n){ const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+// Local YYYY-MM-DD (no UTC shift, unlike fmt() which uses toISOString).
+function fmtLocal(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+async function renderHistory(){
+  const el = document.getElementById('historyList');
+  el.innerHTML = `<div class="empty">Loading…</div>`;
+  try{
+    const db = await loadDB();
+    const now = new Date();
+    el.innerHTML = buildMonthTableHTML(db, now.getFullYear(), now.getMonth());
+    renderArchiveFromDB(db);
+  }catch(e){
+    el.innerHTML = `<div class="empty">Couldn't reach the server — will retry automatically.</div>`;
+  }
+}
+
+// Builds the same weekly Mon-Fri table used by Daily Summary, but for any
+// given year/month (month is 0-indexed) instead of always "this month".
+// Shared by Daily Summary (current month, always) and Monthly Archive
+// (whichever month the user picks) so both stay in sync with one code path.
+function buildMonthTableHTML(db, year, month){
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month+1, 0); // last day of month
+  const monthLabel = monthStart.toLocaleDateString('en-US', {month:'long', year:'numeric'});
+
+  const totals = {PF:0,WU:0,ME:0,SF:0};
+  let html = `<div style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:10px;letter-spacing:.3px;">${monthLabel}</div>`;
+  html += `<table><thead><tr><th>Date</th>${CODE_ORDER.map(c=>`<th>${c}</th>`).join('')}<th></th></tr></thead><tbody>`;
+
+  let weekStart = mondayOf(monthStart);
+  let weekNum = 1;
+  let anyRows = false;
+  while(weekStart <= monthEnd){
+    const weekDays = [];
+    for(let i=0;i<5;i++){
+      const day = addDays(weekStart, i);
+      if(day < monthStart || day > monthEnd) continue;
+      weekDays.push(day);
+    }
+    if(weekDays.length){
+      anyRows = true;
+      html += `<tr class="week-row"><td colspan="${CODE_ORDER.length+2}">Week ${weekNum}</td></tr>`;
+      weekDays.forEach(day=>{
+        const key = fmtLocal(day);
+        const recs = db[key] ? (db[key].records || {}) : null;
+        html += `<tr><td>${key}</td>${CODE_ORDER.map(c=>{
+          if(!recs) return `<td class="gap">-</td>`;
+          const arr = recs[c];
+          const v = arr ? arr.length : undefined;
+          if(v!==undefined) totals[c]+=v;
+          return `<td${v===undefined?' class="gap"':''}>${v!==undefined?v:'-'}</td>`;
+        }).join('')}<td><button class="btn btn-s btn-sm" style="padding:2px 8px;font-size:11px;" onclick="openDayEditModal('${key}')">✎ Edit</button></td></tr>`;
+      });
+      weekNum++;
+    }
+    weekStart = addDays(weekStart, 7);
+  }
+  html += `<tr style="font-weight:bold;background:var(--panel3);"><td>Total</td>${CODE_ORDER.map(c=>`<td>${totals[c]}</td>`).join('')}<td></td></tr>`;
+  html += `</tbody></table>`;
+  if(!anyRows) html += `<div class="empty">No business days found for this month.</div>`;
+  return html;
+}
+
+// Groups "YYYY-MM" keys into fiscal years (Apr–Mar, named after the start
+// year — e.g. FY2024 = Apr 2024 through Mar 2025), newest FY and newest
+// month first, for the Monthly Archive dropdown's <optgroup>s.
+function fiscalYearOf(y, mo){ return mo >= 4 ? y : y-1; }
+function buildFiscalMonthGroups(allMonthKeys){
+  const byFY = {};
+  allMonthKeys.forEach(m=>{
+    const [y,mo] = m.split('-').map(Number);
+    const fy = fiscalYearOf(y, mo);
+    (byFY[fy] = byFY[fy] || []).push(m);
+  });
+  const fys = Object.keys(byFY).map(Number).sort((a,b)=>b-a);
+  return fys.map(fy=>({
+    fy, label:`FY${fy} (Apr ${fy} – Mar ${fy+1})`,
+    months: Array.from(new Set(byFY[fy])).sort().reverse()
+  }));
+}
+
+// Monthly Archive page: a month dropdown grouped by fiscal year (Apr–Mar),
+// covering FY2024 (April 2024) through the current month regardless of
+// whether a given month has any saved data yet — that's what makes it
+// possible to jump to an old, empty month and use the manual-entry form
+// below to backfill it. Renders the same weekly table as Daily Summary for
+// whichever month is selected.
+function renderArchiveFromDB(db){
+  const sel = document.getElementById('archiveMonthSelect');
+  const el = document.getElementById('archiveList');
+  if(!sel || !el) return; // Monthly Archive page not in this build / not loaded yet
+
+  const months = new Set();
+  Object.keys(db).forEach(k=> months.add(k.slice(0,7)));
+  const now = new Date();
+  const nowKey = fmtLocal(now).slice(0,7);
+  months.add(nowKey);
+
+  let cursor = new Date(2024, 3, 1); // April 2024 — start of FY2024
+  const end = new Date(now.getFullYear(), now.getMonth(), 1);
+  while(cursor <= end){
+    months.add(fmtLocal(cursor).slice(0,7));
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth()+1, 1);
+  }
+
+  if(!sel.dataset.populated){
+    const groups = buildFiscalMonthGroups(Array.from(months));
+    sel.innerHTML = groups.map(g=>{
+      const opts = g.months.map(m=>{
+        const [y,mo] = m.split('-').map(Number);
+        const label = new Date(y, mo-1, 1).toLocaleDateString('en-US', {month:'long', year:'numeric'});
+        return `<option value="${m}">${label}</option>`;
+      }).join('');
+      return `<optgroup label="${g.label}">${opts}</optgroup>`;
+    }).join('');
+    const prevKey = fmtLocal(new Date(now.getFullYear(), now.getMonth()-1, 1)).slice(0,7);
+    sel.value = months.has(prevKey) ? prevKey : nowKey;
+    sel.dataset.populated = "1";
+  }
+
+  const [y, mo] = sel.value.split('-').map(Number);
+  el.innerHTML = buildMonthTableHTML(db, y, mo-1);
+}
+
+// Shared "click ✎ to edit" modal — used by both Daily Summary and Monthly
+// Archive (they render the same weekly table). Pass a date to edit that
+// existing row (prefilled with its current counts), or '' to add a new day
+// (blank form, date field editable). Counts only — no per-device detail,
+// since there's nothing to edit at that level from a day total.
+async function openDayEditModal(date){
+  document.getElementById('dayModalTitle').textContent = date ? `Edit ${date}` : 'Add a day';
+  document.getElementById('dayModalDate').value = date || '';
+  CODE_ORDER.forEach(c=>{ document.getElementById('dayModal-'+c).value = ''; });
+  document.getElementById('dayEditModalOverlay').style.display = 'flex';
+  if(!date) return; // adding a new day — leave fields blank
+  try{
+    const db = await loadDB();
+    const rec = db[date] ? db[date].records : null;
+    CODE_ORDER.forEach(c=>{
+      document.getElementById('dayModal-'+c).value = (rec && rec[c]) ? rec[c].length : 0;
+    });
+  }catch(e){ /* couldn't prefill — fields just stay blank, still editable */ }
+}
+window.openDayEditModal = openDayEditModal;
+
+function closeDayModal(){
+  document.getElementById('dayEditModalOverlay').style.display = 'none';
+}
+window.closeDayModal = closeDayModal;
+
+// Saves whatever's in the modal as COUNTS only (no individual device rows —
+// there's no host/IP/user detail to enter for a day total), so it feeds
+// weekly/monthly averages and Monthly Report exactly like a normal saved
+// day. Always password-gated, whether the date is new or already has real
+// data — this is a deliberate manual override of the permanent archive, not
+// the routine "don't double-save today" check.
+async function saveDayModal(){
+  const date = document.getElementById('dayModalDate').value;
+  if(!date){ alert("Pick a date first."); return; }
+  const counts = {};
+  CODE_ORDER.forEach(c=>{ counts[c] = Number(document.getElementById('dayModal-'+c).value)||0; });
+  const entered = prompt("Saving "+date+" to the permanent archive.\nEnter the password to continue:");
+  if(entered === null) return;
+  if(entered !== HISTORY_OVERWRITE_PASSWORD){
+    alert("Incorrect password. Nothing was saved.");
+    return;
+  }
+  try{
+    const blob = await fetchFullBlob();
+    const records = {};
+    CODE_ORDER.forEach(c=>{
+      records[c] = Array.from({length: counts[c]}, ()=>({
+        "Host name":"", "User(Name)":"", "IP address":"", "Complied": false
+      }));
+    });
+    blob.reports = blob.reports || {};
+    blob.reports[date] = { savedAt: new Date().toISOString(), records, manualEntry:true };
+    await postFullBlob(blob);
+    await renderHistory();
+    closeDayModal();
+  }catch(e){
+    alert("⚠ Couldn't reach the server — nothing was saved. Check the connection and try again.");
+  }
+}
+window.saveDayModal = saveDayModal;
+
+async function renderArchive(){
+  const el = document.getElementById('archiveList');
+  try{
+    const db = await loadDB();
+    renderArchiveFromDB(db);
+  }catch(e){
+    if(el) el.innerHTML = `<div class="empty">Couldn't reach the server — will retry automatically.</div>`;
+  }
+}
+window.renderArchive = renderArchive;
+
+/* ================= MONTHLY REPORT (IWSP auto + SAT-A manual) =================
+   New top-level blob key "monthlyReport": { "YYYY-MM": {
+     totalDevices:{pc,laptop},      // IWSP only — used as the denominator for Actual %
+     targets:{iwsp,sata},           // Target % per site, editable
+     sataWeekly:{1:{PF,WU,ME}, ...},// manual weekly entries (SAT-A isn't in any CSV)
+     sataActual:{PF,WU,ME,TOTAL},   // SAT-A Actual % — entered directly, not computed:
+                                     // there's no device-count source for SAT-A in this
+                                     // app, so guessing a formula would just be wrong.
+     sataUncomplied:{PF,WU,ME}      // SAT-A "as of" open-item counts — also manual, since
+                                     // SAT-A has no per-device Complied tracking like IWSP.
+   } }
+   IWSP's own numbers (weekly averages, Actual %, uncomplied-as-of) are fully computed
+   from the existing "reports" archive — same data Daily Summary/Monthly Archive use —
+   so there's nothing to type in for IWSP at all. */
+
+const REP_INPUT = "width:90px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:12px;padding:5px 6px;";
+const REP_INPUT_SM = "width:64px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:12px;padding:4px 5px;";
+
+function defaultReportMonthData(){
+  const sataWeekly = {};
+  for(let i=1;i<=6;i++) sataWeekly[i] = {PF:'',WU:'',ME:''};
+  return {
+    totalDevices:{pc:'', laptop:''},
+    targets:{iwsp:100, sata:95},
+    sataWeekly,
+    sataActual:{PF:'',WU:'',ME:'',TOTAL:''},
+    sataUncomplied:{PF:'',WU:'',ME:''}
+  };
+}
+
+// Same Monday-Friday week grouping as buildMonthTableHTML, but averaging each
+// week's daily counts (only across days that actually have saved data, same
+// as the "divide by however many days have data" rule from the source sheet)
+// instead of summing them. Also tracks the most recently SAVED date in the
+// month, and that date's raw records, for the "as of <date>" uncomplied table.
+function computeIwspWeeklyFromReports(reports, year, month){
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month+1, 0);
+  let weekStart = mondayOf(monthStart);
+  const weeks = [];
+  let weekNum = 1;
+  let lastDate = null;
+  while(weekStart <= monthEnd){
+    const days = [];
+    for(let i=0;i<5;i++){
+      const day = addDays(weekStart, i);
+      if(day < monthStart || day > monthEnd) continue;
+      days.push(day);
+    }
+    if(days.length){
+      const sums = {PF:0,WU:0,ME:0,SF:0};
+      let n = 0;
+      days.forEach(day=>{
+        const key = fmtLocal(day);
+        const rec = reports[key];
+        if(rec && rec.records){
+          n++;
+          CODE_ORDER.forEach(c=>{ sums[c] += (rec.records[c]||[]).length; });
+          if(!lastDate || key > lastDate) lastDate = key;
+        }
+      });
+      const wk = {weekNum, days:n};
+      CODE_ORDER.forEach(c=>{ wk[c] = n ? +(sums[c]/n).toFixed(2) : null; });
+      weeks.push(wk);
+      weekNum++;
+    }
+    weekStart = addDays(weekStart, 7);
+  }
+  const totals = {};
+  CODE_ORDER.forEach(c=>{
+    const vals = weeks.filter(w=>w[c]!==null).map(w=>w[c]);
+    totals[c] = vals.length ? +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2) : null;
+  });
+  const lastRecords = (lastDate && reports[lastDate]) ? (reports[lastDate].records || {}) : null;
+  return { weeks, totals, lastDate, lastRecords };
+}
+
+// Average of whichever SAT-A weeks actually have a number typed in (blank
+// weeks are skipped, not treated as 0) — same "only count days/weeks with
+// data" rule as the IWSP side.
+function computeSataWeeklyTotal(sataWeekly, weekCount){
+  const totals = {};
+  ['PF','WU','ME'].forEach(c=>{
+    const vals = [];
+    for(let i=1;i<=weekCount;i++){
+      const v = sataWeekly[i] && sataWeekly[i][c];
+      if(v!=='' && v!=null && !isNaN(v)) vals.push(Number(v));
+    }
+    totals[c] = vals.length ? +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2) : null;
+  });
+  return totals;
+}
+
+function computeUncompliedCounts(records){
+  const out = {};
+  CODE_ORDER.forEach(c=>{
+    const arr = (records && records[c]) || [];
+    out[c] = arr.filter(r=>!r.Complied).length;
+  });
+  return out;
+}
+
+// Actual % = 100 − (category's monthly average ÷ that category's device
+// count) × 100, floored at 0%. PF and WU are measured against the PC count;
+// ME (Mobile Encryption — it literally filters "Usage pattern = Mobile PC")
+// is measured against the Laptop count instead, since it only ever applies
+// to laptops. TOTAL is the plain average of the three category %s.
+function pctFromCount(numerator, denom){
+  if(!denom) return 0;
+  return Math.max(0, 100 - ((numerator||0)/denom*100));
+}
+function computeIwspActual(totals, totalDevices){
+  const pc = Number(totalDevices.pc)||0, laptop = Number(totalDevices.laptop)||0;
+  const PF = pctFromCount(totals.PF, pc);
+  const WU = pctFromCount(totals.WU, pc);
+  const ME = pctFromCount(totals.ME, laptop);
+  return {PF, WU, ME, TOTAL:(PF+WU+ME)/3};
+}
+
+async function loadMonthlyReportAll(){
+  const blob = await fetchFullBlob();
+  return blob.monthlyReport || {};
+}
+async function saveReportMonthData(monthKey, monthData){
+  const blob = await fetchFullBlob();
+  blob.monthlyReport = blob.monthlyReport || {};
+  blob.monthlyReport[monthKey] = monthData;
+  await postFullBlob(blob);
+}
+
+function fmtRepN(v){ return (v===null||v===undefined||v==='') ? '-' : v; }
+function fmtRepPct(v){ return (v===null||v===undefined||v===''||isNaN(v)) ? '-' : (Number(v).toFixed(1)+'%'); }
+
+// Small dependency-free SVG bar chart — 2 bars (IWSP green / SAT-A orange)
+// per week, one chart per category. No CDN/library needed, matches the
+// existing dark console theme.
+function buildGroupedBarSVG(title, weekLabels, iwspVals, sataVals){
+  const W = 220, H = 150, padL=26, padR=8, padT=20, padB=26;
+  const plotW = W-padL-padR, plotH = H-padT-padB;
+  const n = Math.max(1, weekLabels.length);
+  const groupW = plotW/n;
+  const barW = Math.min(16, groupW*0.32);
+  const allVals = iwspVals.concat(sataVals).filter(v=>v!=null && !isNaN(v));
+  const maxV = Math.max(1, ...allVals);
+  const scale = v => (v==null||isNaN(v)) ? 0 : (v/maxV)*plotH;
+  let bars = '';
+  weekLabels.forEach((lbl,i)=>{
+    const gx = padL + i*groupW + groupW/2;
+    const hv = scale(iwspVals[i]);
+    const hs = scale(sataVals[i]);
+    bars += `<rect x="${(gx-barW-2).toFixed(1)}" y="${(padT+plotH-hv).toFixed(1)}" width="${barW.toFixed(1)}" height="${hv.toFixed(1)}" fill="#22c55e" rx="2"/>`;
+    bars += `<rect x="${(gx+2).toFixed(1)}" y="${(padT+plotH-hs).toFixed(1)}" width="${barW.toFixed(1)}" height="${hs.toFixed(1)}" fill="#f97316" rx="2"/>`;
+    bars += `<text x="${gx.toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="8" fill="var(--muted)" font-family="var(--mono)">W${i+1}</text>`;
+  });
+  return `<div style="text-align:center;">
+    <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:4px;">${title}</div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:220px;">
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plotH}" stroke="var(--border)" stroke-width="1"/>
+      <line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="var(--border)" stroke-width="1"/>
+      ${bars}
+    </svg>
+  </div>`;
+}
+
+// Small dependency-free SVG line chart for the month-over-month trend.
+function buildLineChartSVG(labels, seriesA, seriesB){
+  if(labels.length < 2) return `<div class="empty">Need at least 2 months of data to chart a trend.</div>`;
+  const W = 640, H = 190, padL=34, padR=14, padT=16, padB=26;
+  const plotW = W-padL-padR, plotH = H-padT-padB;
+  const n = labels.length;
+  const stepX = n>1 ? plotW/(n-1) : 0;
+  const scaleY = v => padT + plotH - (v/100)*plotH;
+  const scaleX = i => padL + i*stepX;
+  function pathFor(vals){
+    let d = '';
+    vals.forEach((v,i)=>{ if(v!=null) d += (d?' L ':'M ')+scaleX(i).toFixed(1)+' '+scaleY(v).toFixed(1); });
+    return d;
+  }
+  let dots = '';
+  seriesA.forEach((v,i)=>{ if(v!=null) dots += `<circle cx="${scaleX(i).toFixed(1)}" cy="${scaleY(v).toFixed(1)}" r="3" fill="#22c55e"/>`; });
+  seriesB.forEach((v,i)=>{ if(v!=null) dots += `<circle cx="${scaleX(i).toFixed(1)}" cy="${scaleY(v).toFixed(1)}" r="3" fill="#f97316"/>`; });
+  let xlabels = '';
+  labels.forEach((lbl,i)=>{ xlabels += `<text x="${scaleX(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="var(--mono)">${lbl}</text>`; });
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:640px;">
+    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plotH}" stroke="var(--border)"/>
+    <line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="var(--border)"/>
+    <text x="${padL-6}" y="${padT+4}" text-anchor="end" font-size="9" fill="var(--muted)" font-family="var(--mono)">100%</text>
+    <text x="${padL-6}" y="${padT+plotH}" text-anchor="end" font-size="9" fill="var(--muted)" font-family="var(--mono)">0%</text>
+    <path d="${pathFor(seriesA)}" fill="none" stroke="#22c55e" stroke-width="2"/>
+    <path d="${pathFor(seriesB)}" fill="none" stroke="#f97316" stroke-width="2"/>
+    ${dots}
+    ${xlabels}
+  </svg>`;
+}
+
+async function renderReportPage(){
+  const sel = document.getElementById('reportMonthSelect');
+  const body = document.getElementById('reportBody');
+  if(!sel || !body) return;
+  body.innerHTML = `<div class="empty">Loading…</div>`;
+
+  let db, allReportData;
+  try{
+    db = await loadDB();
+    allReportData = await loadMonthlyReportAll();
+  }catch(e){
+    body.innerHTML = `<div class="empty">Couldn't reach the server — will retry automatically.</div>`;
+    return;
+  }
+
+  const months = new Set();
+  Object.keys(db).forEach(k=>months.add(k.slice(0,7)));
+  Object.keys(allReportData).forEach(k=>months.add(k));
+  const now = new Date();
+  const nowKey = fmtLocal(now).slice(0,7);
+  months.add(nowKey);
+  const sorted = Array.from(months).sort().reverse();
+  if(!sel.dataset.populated){
+    sel.innerHTML = sorted.map(m=>{
+      const [y,mo] = m.split('-').map(Number);
+      const label = new Date(y,mo-1,1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+      return `<option value="${m}">${label}</option>`;
+    }).join('');
+    sel.value = nowKey;
+    sel.dataset.populated = "1";
+  }
+
+  const monthKey = sel.value;
+  const [y, mo] = monthKey.split('-').map(Number);
+  const saved = allReportData[monthKey] || {};
+  const monthData = defaultReportMonthData();
+  monthData.totalDevices = Object.assign(monthData.totalDevices, saved.totalDevices||{});
+  monthData.targets = Object.assign(monthData.targets, saved.targets||{});
+  monthData.sataWeekly = Object.assign(monthData.sataWeekly, saved.sataWeekly||{});
+  monthData.sataActual = Object.assign(monthData.sataActual, saved.sataActual||{});
+  monthData.sataUncomplied = Object.assign(monthData.sataUncomplied, saved.sataUncomplied||{});
+
+  const iwsp = computeIwspWeeklyFromReports(db, y, mo-1);
+  const weekCount = iwsp.weeks.length || 5;
+  const sataTotals = computeSataWeeklyTotal(monthData.sataWeekly, weekCount);
+  const iwspActual = computeIwspActual(iwsp.totals, monthData.totalDevices);
+  const iwspUncomplied = iwsp.lastRecords ? computeUncompliedCounts(iwsp.lastRecords) : {PF:null,WU:null,ME:null,SF:null};
+  const monthLabel = new Date(y,mo-1,1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const weekLabels = iwsp.weeks.map(w=>'WEEK'+w.weekNum);
+
+  let html = '';
+  html += `<input type="hidden" id="repWeekCount" value="${weekCount}">`;
+
+  html += `<div class="row" style="justify-content:flex-start;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:24px;">`;
+  html += `<div style="min-width:200px;">
+    <div style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:6px;">TOTAL DEVICE (IWSP)</div>
+    <div class="tw"><table><tbody>
+      <tr><td>PC</td><td><input type="number" min="0" id="rep-pc" value="${monthData.totalDevices.pc}" style="${REP_INPUT}"></td></tr>
+      <tr><td>Laptop</td><td><input type="number" min="0" id="rep-laptop" value="${monthData.totalDevices.laptop}" style="${REP_INPUT}"></td></tr>
+    </tbody></table></div>
+  </div>`;
+  html += `<div style="min-width:200px;">
+    <div style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:6px;">TARGET %</div>
+    <div class="tw"><table><tbody>
+      <tr><td>IWSP</td><td><input type="number" min="0" max="100" step="0.1" id="rep-target-iwsp" value="${monthData.targets.iwsp}" style="${REP_INPUT}"></td></tr>
+      <tr><td>SAT-A</td><td><input type="number" min="0" max="100" step="0.1" id="rep-target-sata" value="${monthData.targets.sata}" style="${REP_INPUT}"></td></tr>
+    </tbody></table></div>
+  </div>`;
+  html += `</div>`;
+
+  html += `<div style="font-family:var(--mono);font-size:12px;color:var(--muted);margin:4px 0 6px;">IWSP WEEKLY AVERAGE PER CATEGORY <span style="opacity:.65;">(auto, from Daily Summary)</span></div>`;
+  html += `<div class="tw"><table><thead><tr><th>WEEK</th><th>PF</th><th>WU</th><th>ME</th><th>SF</th></tr></thead><tbody>`;
+  iwsp.weeks.forEach(w=>{ html += `<tr><td>WEEK ${w.weekNum}</td><td>${fmtRepN(w.PF)}</td><td>${fmtRepN(w.WU)}</td><td>${fmtRepN(w.ME)}</td><td>${fmtRepN(w.SF)}</td></tr>`; });
+  html += `<tr style="font-weight:bold;background:var(--panel3);"><td>Total</td><td>${fmtRepN(iwsp.totals.PF)}</td><td>${fmtRepN(iwsp.totals.WU)}</td><td>${fmtRepN(iwsp.totals.ME)}</td><td>${fmtRepN(iwsp.totals.SF)}</td></tr>`;
+  html += `</tbody></table></div>`;
+
+  html += `<div style="font-family:var(--mono);font-size:12px;color:var(--muted);margin:18px 0 6px;">SAT-A WEEKLY <span style="opacity:.65;">(manual entry — not in any CSV)</span></div>`;
+  html += `<div class="tw"><table><thead><tr><th>WEEK</th><th>PF</th><th>WU</th><th>ME</th></tr></thead><tbody>`;
+  for(let i=1;i<=weekCount;i++){
+    const wk = monthData.sataWeekly[i] || {PF:'',WU:'',ME:''};
+    html += `<tr><td>WEEK ${i}</td>
+      <td><input type="number" min="0" id="sata-w${i}-PF" value="${wk.PF}" style="${REP_INPUT_SM}"></td>
+      <td><input type="number" min="0" id="sata-w${i}-WU" value="${wk.WU}" style="${REP_INPUT_SM}"></td>
+      <td><input type="number" min="0" id="sata-w${i}-ME" value="${wk.ME}" style="${REP_INPUT_SM}"></td>
+    </tr>`;
+  }
+  html += `<tr style="font-weight:bold;background:var(--panel3);"><td>Total</td><td>${fmtRepN(sataTotals.PF)}</td><td>${fmtRepN(sataTotals.WU)}</td><td>${fmtRepN(sataTotals.ME)}</td></tr>`;
+  html += `</tbody></table></div>`;
+
+  html += `<div style="font-family:var(--mono);font-size:12px;color:var(--muted);margin:18px 0 6px;">${monthLabel.toUpperCase()} PC BASIC MEASURE RESULT</div>`;
+  html += `<div class="tw"><table><thead><tr><th>WEEK</th><th>SCAN BY</th><th>PF</th><th>WU</th><th>ME</th></tr></thead><tbody>`;
+  iwsp.weeks.forEach(w=>{
+    const sw = monthData.sataWeekly[w.weekNum] || {};
+    html += `<tr><td>WEEK ${w.weekNum}</td><td style="color:#22c55e;">IWSP</td><td>${fmtRepN(w.PF)}</td><td>${fmtRepN(w.WU)}</td><td>${fmtRepN(w.ME)}</td></tr>`;
+    html += `<tr><td></td><td style="color:#f97316;">SAT-A</td><td>${fmtRepN(sw.PF===''?null:sw.PF)}</td><td>${fmtRepN(sw.WU===''?null:sw.WU)}</td><td>${fmtRepN(sw.ME===''?null:sw.ME)}</td></tr>`;
+  });
+  html += `<tr style="font-weight:bold;background:var(--panel3);"><td>Total</td><td style="color:#22c55e;">IWSP</td><td>${fmtRepN(iwsp.totals.PF)}</td><td>${fmtRepN(iwsp.totals.WU)}</td><td>${fmtRepN(iwsp.totals.ME)}</td></tr>`;
+  html += `<tr style="font-weight:bold;background:var(--panel3);"><td></td><td style="color:#f97316;">SAT-A</td><td>${fmtRepN(sataTotals.PF)}</td><td>${fmtRepN(sataTotals.WU)}</td><td>${fmtRepN(sataTotals.ME)}</td></tr>`;
+  html += `</tbody></table></div>`;
+
+  html += `<div class="row" style="gap:24px;flex-wrap:wrap;margin-top:18px;align-items:flex-start;">`;
+  html += `<div style="flex:1;min-width:280px;">`;
+  html += `<div style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:6px;">ACTUAL COMPLIANCE % <span style="opacity:.65;">(IWSP auto, SAT-A manual)</span></div>`;
+  html += `<div class="tw"><table><thead><tr><th>CATEGORY</th><th>IWSP</th><th>SAT-A</th></tr></thead><tbody>`;
+  ['PF','WU','ME'].forEach(c=>{
+    html += `<tr><td>${c}</td><td>${fmtRepPct(iwspActual[c])}</td><td><input type="number" min="0" max="100" step="0.1" id="sata-actual-${c}" value="${monthData.sataActual[c]}" style="${REP_INPUT_SM}"></td></tr>`;
+  });
+  html += `<tr style="font-weight:bold;background:var(--panel3);"><td>TOTAL</td><td>${fmtRepPct(iwspActual.TOTAL)}</td><td><input type="number" min="0" max="100" step="0.1" id="sata-actual-TOTAL" value="${monthData.sataActual.TOTAL}" style="${REP_INPUT_SM}"></td></tr>`;
+  html += `</tbody></table></div>`;
+  html += `<div style="font-size:11px;color:var(--muted);margin-top:6px;">IWSP formula: 100 − (category weekly average ÷ device count) × 100. PF &amp; WU use PC count, ME uses Laptop count (it only ever targets "Mobile PC" usage). SAT-A has no device-count source here, so its % is entered directly.</div>`;
+  html += `</div>`;
+
+  html += `<div style="flex:1;min-width:220px;">`;
+  html += `<div style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:6px;">NON-COMPLIANCE SUMMARY</div>`;
+  html += `<div class="tw"><table><thead><tr><th></th><th>IWSP</th><th>SAT-A</th></tr></thead><tbody>`;
+  html += `<tr><td>Target</td><td>${fmtRepPct(monthData.targets.iwsp)}</td><td>${fmtRepPct(monthData.targets.sata)}</td></tr>`;
+  html += `<tr><td>Actual</td><td>${fmtRepPct(iwspActual.TOTAL)}</td><td>${fmtRepPct(monthData.sataActual.TOTAL)}</td></tr>`;
+  html += `</tbody></table></div>`;
+  html += `</div>`;
+  html += `</div>`;
+
+  const asOfLabel = iwsp.lastDate || 'no saved data yet';
+  html += `<div style="font-family:var(--mono);font-size:12px;color:var(--muted);margin:18px 0 6px;">NO. OF UNCOMPLIED DEVICES AS OF ${asOfLabel}</div>`;
+  html += `<div class="tw"><table><thead><tr><th>SCAN BY</th><th>PF</th><th>WU</th><th>ME</th></tr></thead><tbody>`;
+  html += `<tr><td style="color:#22c55e;">IWSP</td><td>${fmtRepN(iwspUncomplied.PF)}</td><td>${fmtRepN(iwspUncomplied.WU)}</td><td>${fmtRepN(iwspUncomplied.ME)}</td></tr>`;
+  html += `<tr><td style="color:#f97316;">SAT-A <span style="opacity:.6;">(manual)</span></td>
+    <td><input type="number" min="0" id="sata-unc-PF" value="${monthData.sataUncomplied.PF}" style="${REP_INPUT_SM}"></td>
+    <td><input type="number" min="0" id="sata-unc-WU" value="${monthData.sataUncomplied.WU}" style="${REP_INPUT_SM}"></td>
+    <td><input type="number" min="0" id="sata-unc-ME" value="${monthData.sataUncomplied.ME}" style="${REP_INPUT_SM}"></td>
+  </tr>`;
+  html += `</tbody></table></div>`;
+  if(!iwsp.lastDate) html += `<div style="font-size:11px;color:var(--muted);margin-top:4px;">No IWSP data saved yet for ${monthLabel} — run filters and save a day to populate this.</div>`;
+
+  html += `<div style="margin-top:18px;"><button class="btn btn-p btn-sm" onclick="saveReportInputs()">💾 Save SAT-A / Totals / Targets for ${monthLabel}</button></div>`;
+
+  html += `<div style="margin-top:28px;">`;
+  html += `<div style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:10px;">WEEKLY TREND — <span style="color:#22c55e;">■ IWSP</span> &nbsp; <span style="color:#f97316;">■ SAT-A</span></div>`;
+  html += `<div class="row" style="gap:16px;flex-wrap:wrap;justify-content:flex-start;">`;
+  ['PF','WU','ME'].forEach(c=>{
+    const iwspVals = iwsp.weeks.map(w=>w[c]);
+    const sataVals = weekLabels.map((_,idx)=>{
+      const wk = monthData.sataWeekly[idx+1];
+      const v = wk ? wk[c] : '';
+      return (v==='' || v==null) ? null : Number(v);
+    });
+    html += buildGroupedBarSVG(c, weekLabels, iwspVals, sataVals);
+  });
+  html += `</div></div>`;
+
+  // Historical trend across every month that has any data at all, using
+  // each month's OWN saved Total Device / Actual-% inputs (not this month's).
+  const histMonths = Array.from(months).sort();
+  const histLabels = histMonths.map(m=>{
+    const [yy,mm] = m.split('-').map(Number);
+    return new Date(yy,mm-1,1).toLocaleDateString('en-US',{month:'short',year:'2-digit'});
+  });
+  const histIwsp = histMonths.map(m=>{
+    const [yy,mm] = m.split('-').map(Number);
+    const rd = allReportData[m] || {};
+    const devices = rd.totalDevices || {};
+    const weekly = computeIwspWeeklyFromReports(db, yy, mm-1);
+    if(!weekly.lastDate) return null;
+    const act = computeIwspActual(weekly.totals, devices);
+    return +act.TOTAL.toFixed(1);
+  });
+  const histSata = histMonths.map(m=>{
+    const rd = allReportData[m] || {};
+    const v = rd.sataActual ? rd.sataActual.TOTAL : '';
+    return (v===''||v==null||isNaN(v)) ? null : Number(v);
+  });
+  html += `<div style="margin-top:28px;">`;
+  html += `<div style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:10px;">HISTORICAL TREND — ACTUAL COMPLIANCE % <span style="color:#22c55e;">■ IWSP</span> &nbsp; <span style="color:#f97316;">■ SAT-A</span></div>`;
+  html += buildLineChartSVG(histLabels, histIwsp, histSata);
+  html += `</div>`;
+
+  body.innerHTML = html;
+}
+window.renderReportPage = renderReportPage;
+
+async function saveReportInputs(){
+  const sel = document.getElementById('reportMonthSelect');
+  const monthKey = sel.value;
+  const weekCount = Number(document.getElementById('repWeekCount')?.value || 5);
+  const monthData = defaultReportMonthData();
+  monthData.totalDevices.pc = document.getElementById('rep-pc')?.value ?? '';
+  monthData.totalDevices.laptop = document.getElementById('rep-laptop')?.value ?? '';
+  monthData.targets.iwsp = document.getElementById('rep-target-iwsp')?.value ?? 100;
+  monthData.targets.sata = document.getElementById('rep-target-sata')?.value ?? 95;
+  for(let i=1;i<=weekCount;i++){
+    monthData.sataWeekly[i] = {
+      PF: document.getElementById(`sata-w${i}-PF`)?.value ?? '',
+      WU: document.getElementById(`sata-w${i}-WU`)?.value ?? '',
+      ME: document.getElementById(`sata-w${i}-ME`)?.value ?? ''
+    };
+  }
+  monthData.sataActual = {
+    PF: document.getElementById('sata-actual-PF')?.value ?? '',
+    WU: document.getElementById('sata-actual-WU')?.value ?? '',
+    ME: document.getElementById('sata-actual-ME')?.value ?? '',
+    TOTAL: document.getElementById('sata-actual-TOTAL')?.value ?? ''
+  };
+  monthData.sataUncomplied = {
+    PF: document.getElementById('sata-unc-PF')?.value ?? '',
+    WU: document.getElementById('sata-unc-WU')?.value ?? '',
+    ME: document.getElementById('sata-unc-ME')?.value ?? ''
+  };
+  try{
+    await saveReportMonthData(monthKey, monthData);
+    await renderReportPage();
+  }catch(e){
+    alert("⚠ Couldn't reach the server — nothing was saved. Check the connection and try again.");
+  }
+}
+window.saveReportInputs = saveReportInputs;
+/* ================= END MONTHLY REPORT ================= */
+
+
+async function clearHistory(){
+  if(confirm("Clear the entire "+(USE_SERVER_DB?"shared":"local")+" database? This cannot be undone.")){
+    try{
+      await clearDB();
+      await renderHistory();
+      document.getElementById('dbRawView').style.display = "none";
+    }catch(e){
+      alert("Couldn't reach the server — nothing was cleared. Check the connection and try again.");
+    }
+  }
+}
+
+async function exportDatabase(){
+  let db;
+  try{ db = await loadDB(); }
+  catch(e){ alert("Couldn't reach the server — nothing to export."); return; }
+  if(!Object.keys(db).length){ alert("Database is empty — nothing to export."); return; }
+  const blob = new Blob([JSON.stringify(db, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `ComplianceDatabase_${fmt(new Date())}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importDatabase(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(ev){
+    try{
+      const incoming = JSON.parse(ev.target.result);
+      await mergeDB(incoming);
+      await renderHistory();
+      alert(`Imported ${Object.keys(incoming).length} date(s) into the database.`);
+    }catch(e){
+      alert("Couldn't read that file — make sure it's a database JSON exported from this tool.");
+    }
+    event.target.value = "";
+  };
+  reader.readAsText(file);
+}
+
+// Converts a {date: {savedAt, records}} map to a simple CSV: one row per
+// date, counts only (Date,PF,WU,ME,SF) — matches the layout of the original
+// spreadsheet this whole app is based on, and is easy to open/edit in Excel.
+function reportsToCSV(dict){
+  const lines = ["Date,PF,WU,ME,SF"];
+  Object.keys(dict).sort().forEach(date=>{
+    const rec = dict[date].records || {};
+    lines.push([date, ...CODE_ORDER.map(c=>(rec[c]||[]).length)].join(","));
+  });
+  return lines.join("\n");
+}
+// Parses that same CSV shape back into a {date: {savedAt, records}} map,
+// synthesizing placeholder record arrays of the right length (counts only —
+// no host/IP/user detail, same as the day-edit modal). Skips any row whose
+// first column isn't a YYYY-MM-DD date (e.g. a header row).
+function csvToReports(text){
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length);
+  const out = {};
+  lines.forEach(line=>{
+    const parts = line.split(",").map(s=>s.trim());
+    const date = parts[0];
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) return; // header row or junk — skip
+    const counts = {PF:Number(parts[1])||0, WU:Number(parts[2])||0, ME:Number(parts[3])||0, SF:Number(parts[4])||0};
+    const records = {};
+    CODE_ORDER.forEach(c=>{
+      records[c] = Array.from({length: counts[c]}, ()=>({
+        "Host name":"", "User(Name)":"", "IP address":"", "Complied": false
+      }));
+    });
+    out[date] = { savedAt: new Date().toISOString(), records, manualEntry:true };
+  });
+  return out;
+}
+
+// Monthly Archive's range-scoped CSV export — filtered to the From/To dates
+// so you can back up or move e.g. one fiscal year without touching the rest.
+async function exportArchiveRange(){
+  const from = document.getElementById('archExportFrom')?.value;
+  const to = document.getElementById('archExportTo')?.value;
+  if(!from || !to){ alert("Pick both a From and To date first."); return; }
+  if(from > to){ alert("The From date has to be before the To date."); return; }
+  let db;
+  try{ db = await loadDB(); }
+  catch(e){ alert("Couldn't reach the server — nothing to export."); return; }
+  const filtered = {};
+  Object.keys(db).forEach(date=>{ if(date >= from && date <= to) filtered[date] = db[date]; });
+  const n = Object.keys(filtered).length;
+  if(!n){ alert(`No saved days between ${from} and ${to} — nothing to export.`); return; }
+  const blob = new Blob([reportsToCSV(filtered)], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `ComplianceArchive_${from}_to_${to}.csv`; a.click();
+  URL.revokeObjectURL(url);
+}
+window.exportArchiveRange = exportArchiveRange;
+
+// Monthly Archive's range-scoped CSV import — same Date,PF,WU,ME,SF layout
+// as exportArchiveRange() above. If From/To are set, rows outside that range
+// are skipped; leave both blank to import every row. Like the existing
+// Import on Daily Summary, matching dates are overwritten with no password
+// — this is meant for moving data between machines, not the same
+// accidental-double-save case the password protects against elsewhere.
+function importArchiveRange(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const from = document.getElementById('archExportFrom')?.value || null;
+  const to = document.getElementById('archExportTo')?.value || null;
+  const reader = new FileReader();
+  reader.onload = async function(ev){
+    try{
+      const incoming = csvToReports(ev.target.result);
+      const filtered = {};
+      Object.keys(incoming).forEach(date=>{
+        if(from && date < from) return;
+        if(to && date > to) return;
+        filtered[date] = incoming[date];
+      });
+      const n = Object.keys(filtered).length;
+      if(!n){ alert("Nothing in that file falls inside the selected range."); event.target.value=""; return; }
+      await mergeDB(filtered);
+      await renderHistory();
+      alert(`Imported ${n} date(s)${(from||to) ? ' within '+(from||'…')+' to '+(to||'…') : ''} into the database.`);
+    }catch(e){
+      alert("Couldn't read that file — make sure it's a Date,PF,WU,ME,SF CSV exported from this tool.");
+    }
+    event.target.value = "";
+  };
+  reader.readAsText(file);
+}
+window.importArchiveRange = importArchiveRange;
+
+async function viewDbRecord(){
+  const date = document.getElementById('dbViewDate').value;
+  const pre = document.getElementById('dbRawView');
+  if(!date){ alert("Pick a date first."); return; }
+  let db;
+  try{ db = await loadDB(); }
+  catch(e){ pre.style.display="block"; pre.textContent = "Couldn't reach the server — try again in a moment."; return; }
+  if(!db[date]){ pre.style.display="block"; pre.textContent = `No saved record for ${date}.`; return; }
+  pre.style.display = "block";
+  pre.textContent = JSON.stringify(db[date], null, 2);
+}
+
+function applyDbRecordToTabs(date, dbEntry, isManualLoad){
+  const templates = buildTemplates();
+  results = {};
+  templates.forEach(tpl=>{
+    const recs = (dbEntry.records && dbEntry.records[tpl.code]) || [];
+    const extraField = extraFieldFor(tpl.label);
+    results[tpl.key] = {
+      key: tpl.key, label: tpl.label, title: tpl.title, code: tpl.code,
+      rows: recs.map(r=>({
+        [COLS.host]: r["Host name"]||"", [COLS.user]: r["User(Name)"]||"", [COLS.ip]: r["IP address"]||"",
+        [extraField]: r[extraField]||"",
+        __complied: !!r["Complied"]
+      }))
+    };
+  });
+  document.getElementById('reportDate').value = date;
+  filenameDetectedDate = null;
+  loadedResultsDate = date;
+  viewingHistorical = !!isManualLoad;
+  renderRuleRef();
+  renderSummary(templates);
+  renderTabs(templates);
+}
+
+async function loadDbRecordToTabs(){
+  const date = document.getElementById('dbViewDate').value;
+  if(!date){ alert("Pick a date first."); return; }
+  let db;
+  try{ db = await loadDB(); }
+  catch(e){ alert("Couldn't reach the server — try again in a moment."); return; }
+  if(!db[date]){ alert(`No saved record for ${date}.`); return; }
+  applyDbRecordToTabs(date, db[date], true);
+  if(typeof nav === 'function') nav('results');
+  document.getElementById('content')?.scrollTo?.({top:0, behavior:'smooth'});
+}
+
+// Silently pulls the most recently SAVED report (by savedAt timestamp, whatever
+// date it represents) from the shared database into the Results tabs, so any
+// PC — whether just opened or already sitting open — converges to whatever the
+// team most recently processed. Deliberately does NOT require the report's date
+// to equal today's real calendar date, since compliance CSVs are routinely
+// processed for a date other than "today". Skipped entirely while the user is
+// deliberately reviewing an older date via "Load into tabs".
+function applyCurrentToTabs(current){
+  const templates = buildTemplates();
+  results = {};
+  templates.forEach(tpl=>{
+    const recs = (current.records && current.records[tpl.code]) || [];
+    const extraField = extraFieldFor(tpl.label);
+    results[tpl.key] = {
+      key: tpl.key, label: tpl.label, title: tpl.title, code: tpl.code,
+      rows: recs.map(r=>({
+        [COLS.host]: r["Host name"]||"", [COLS.user]: r["User(Name)"]||"", [COLS.ip]: r["IP address"]||"",
+        [extraField]: r[extraField]||"",
+        __complied: !!r["Complied"]
+      }))
+    };
+  });
+  const date = current.reportDate || fmt(new Date());
+  document.getElementById('reportDate').value = date;
+  filenameDetectedDate = null;
+  loadedResultsDate = date;
+  viewingHistorical = false;
+  renderRuleRef();
+  renderSummary(templates);
+  renderTabs(templates);
+}
+
+// Unconditionally mirrors the server's single "current" live report into the
+// Upload & Run / Results pages — every PC always shows whatever was most
+// recently run, full stop. This is what makes the site's content identical
+// no matter which PC or when you access it. The only exception is while the
+// user is deliberately reviewing an older saved date via "Load into tabs" on
+// Daily Summary — that view is left alone until they navigate away from it.
+async function autoLoadTodayFromServer(){
+  if(!USE_SERVER_DB) return;
+  if(viewingHistorical) return;
+  try{
+    const current = await loadCurrent();
+    if(current){
+      applyCurrentToTabs(current);
+    } else if(Object.keys(results).length){
+      // Server has no current report (e.g. someone cleared it) — mirror that too.
+      clearWorkingResults();
+    }
+  }catch(e){ /* silent — next poll will retry */ }
+}
+window.autoLoadTodayFromServer = autoLoadTodayFromServer;
+
+// Clears the in-memory working data and resets the Upload & Run / Results
+// pages to empty state. Used both by the manual "Reset" button and
+// automatically when a new file upload is confirmed. This does NOT touch
+// the shared historical database — Daily Summary keeps every saved date's
+// record regardless; only the live working view gets reset.
+function clearWorkingResults(){
+  parsedRows = []; results = {};
+  loadedResultsDate = null; viewingHistorical = false;
+  filenameDetectedDate = null;
+  document.getElementById('csvFile').value = "";
+  document.getElementById('fileStatus').textContent = "";
+  document.getElementById('reportDate').valueAsDate = new Date();
+  renderRuleRef();
+  document.getElementById('summarySection').style.display = "none";
+  document.getElementById('resultsSection').style.display = "none";
+  const emptyEl = document.getElementById('resultsEmpty');
+  if(emptyEl) emptyEl.style.display = "block";
+}
+window.clearWorkingResults = clearWorkingResults;
+
+function resetAll(){
+  clearWorkingResults();
+}
+
+/* ---------------- ASSET DATA ORGANIZER ----------------
+   Entirely client-side, stateless — no server sync needed. Takes the raw
+   Web Asset Monitoring CSV export (A-BV, ~74 columns) and keeps only the
+   useful subset, in a fixed order, ready to preview and download as a
+   clean CSV or a properly auto-fitted Excel file. */
+const ASSET_KEEP_COLUMNS = [
+  "ID","Company","Asset Name","Asset Tag","Model","Model No.","Category","Manufacturer",
+  "Serial","Purchased","Location","Default Location","Checked Out","Status",
+  "Checkout Date","Last Checkin Date","Created At","Updated at","Notes","IP Address",
+  "Anti-Virus","Basic application office","OS","Process","MCore","Line Name/Post Number",
+  "User Name","Network Type","Connection Type","RAM Size","Size of Storage","Type of Storage"
+];
+
+let assetHeaders = [];
+let assetRows = [];
+let assetSourceFilename = "";
+
+document.getElementById('assetCsvFile').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  assetSourceFilename = file.name.replace(/\.csv$/i, '');
+  document.getElementById('assetFileStatus').textContent = `Reading ${file.name}...`;
+
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const text = ev.target.result;
+    const raw = parseCSV(text);
+    if(!raw.length){
+      document.getElementById('assetFileStatus').textContent = `Couldn't read any rows from ${file.name}.`;
+      return;
+    }
+    const rawHeaders = raw[0].map(h=>h.trim().replace(/^\uFEFF/, ''));
+    const headerIndex = {};
+    rawHeaders.forEach((h,idx)=>{ if(!(h in headerIndex)) headerIndex[h] = idx; }); // first occurrence wins for duplicate header names
+
+    const foundColumns = ASSET_KEEP_COLUMNS.filter(c => c in headerIndex);
+    const missingColumns = ASSET_KEEP_COLUMNS.filter(c => !(c in headerIndex));
+
+    assetHeaders = foundColumns;
+    assetRows = raw.slice(1)
+      .filter(r => r.some(v => (v||"").trim() !== "")) // skip fully blank rows
+      .map(r => foundColumns.map(c => (r[headerIndex[c]] !== undefined ? r[headerIndex[c]] : "")));
+
+    document.getElementById('assetFileStatus').textContent =
+      `Organized ${assetRows.length} asset row${assetRows.length===1?'':'s'} from ${file.name} — kept ${foundColumns.length} of ${ASSET_KEEP_COLUMNS.length} expected columns.`;
+
+    const missingNote = document.getElementById('assetMissingNote');
+    if(missingColumns.length){
+      missingNote.style.display = 'block';
+      missingNote.innerHTML = `⚠️ These expected columns weren't found in this file and were skipped: <b>${missingColumns.map(esc).join(', ')}</b>`;
+    } else {
+      missingNote.style.display = 'none';
+    }
+
+    renderAssetPreview();
+    document.getElementById('assetResultCard').style.display = 'block';
+  };
+  reader.readAsText(file);
+});
+
+function renderAssetPreview(){
+  const wrap = document.getElementById('assetTableWrap');
+  if(!assetRows.length){
+    wrap.innerHTML = `<div class="empty">No rows to show.</div>`;
+    return;
+  }
+  let html = `<table><thead><tr>${assetHeaders.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>`;
+  assetRows.forEach(row=>{
+    html += `<tr>${row.map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`;
+  });
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+}
+
+function assetOutputFilename(ext){
+  const base = assetSourceFilename ? assetSourceFilename + '_organized' : 'Asset_Organized_' + fmt(new Date());
+  return base + '.' + ext;
+}
+
+function downloadAssetCSV(){
+  if(!assetRows.length){ alert("Upload an asset export CSV first."); return; }
+  const escCsv = v => `"${(v||"").toString().replace(/"/g,'""')}"`;
+  let out = assetHeaders.map(escCsv).join(',') + '\n';
+  assetRows.forEach(row=>{
+    out += row.map(escCsv).join(',') + '\n';
+  });
+  const blob = new Blob([out], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = assetOutputFilename('csv'); a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function downloadAssetXLSX(){
+  if(!assetRows.length){ alert("Upload an asset export CSV first."); return; }
+  if(typeof ExcelJS === 'undefined'){
+    alert("Excel export library didn't load (no internet access to the CDN?). Use Download CSV instead.");
+    return;
+  }
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Assets");
+
+  ws.addRow(assetHeaders);
+  assetRows.forEach(row => ws.addRow(row));
+
+  // Bold header row + light fill, matching a typical clean asset report look.
+  const headerRow = ws.getRow(1);
+  headerRow.font = { bold: true };
+  headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EAED' } };
+  headerRow.alignment = { vertical: 'middle' };
+
+  // Auto-fit column widths based on the longest value (including the header) in each column.
+  ws.columns = assetHeaders.map((h, colIdx)=>{
+    let maxLen = (h||"").toString().length;
+    assetRows.forEach(row=>{
+      const v = (row[colIdx]||"").toString();
+      if(v.length > maxLen) maxLen = v.length;
+    });
+    return { width: Math.min(Math.max(maxLen + 2, 8), 60) };
+  });
+
+  // Freeze the header row so it stays visible while scrolling, and add
+  // filter dropdowns on the header for quick sorting/filtering in Excel.
+  ws.views = [{ state: 'frozen', ySplit: 1 }];
+  ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: assetHeaders.length } };
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = assetOutputFilename('xlsx'); a.click();
+  URL.revokeObjectURL(url);
+}
+
+function resetAssetOrganizer(){
+  assetHeaders = []; assetRows = []; assetSourceFilename = "";
+  document.getElementById('assetCsvFile').value = "";
+  document.getElementById('assetFileStatus').textContent = "";
+  document.getElementById('assetResultCard').style.display = "none";
+  document.getElementById('assetMissingNote').style.display = "none";
+  document.getElementById('assetTableWrap').innerHTML = "";
+}
+window.resetAssetOrganizer = resetAssetOrganizer;
+window.downloadAssetCSV = downloadAssetCSV;
+window.downloadAssetXLSX = downloadAssetXLSX;
+</script>
+</body>
+</html>
